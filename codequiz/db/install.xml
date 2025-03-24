@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="mod/codequiz/db" VERSION="20240322" COMMENT="XMLDB schema for codequiz module">
+    <TABLES>
+        <TABLE NAME="codequiz" COMMENT="codequiz module data">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primary key"/>
+                <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Course ID"/>
+                <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the activity"/>
+                <FIELD NAME="intro" TYPE="text" NOTNULL="false" COMMENT="Introduction description"/>
+                <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true" COMMENT="Welcome message for user"/>
+                <FIELD NAME="outputexample" TYPE="text" NOTNULL="false" COMMENT="Example output for user"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>
+                <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp modified"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primary key id"/>
+            </KEYS>
+        </TABLE>
+    </TABLES>
+</XMLDB>
