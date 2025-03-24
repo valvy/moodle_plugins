@@ -15,9 +15,6 @@ global $DB, $USER;
 $instance = $DB->get_record('coder', ['id' => $cm->instance], '*', MUST_EXIST);
 
 $bericht = format_text($instance->welkomstbericht, FORMAT_HTML);
-$bericht = str_replace('{{naam}}', fullname($USER), $bericht);
-
-
 ?>
 
 <!-- Begin van de Forensische ICT Opdracht content -->
@@ -397,14 +394,7 @@ De versleuteling van pizza is kdoor
   const pageTitle = "Forensische ICT Opdracht";
 
   const applicatie_naam = "Opdracht1";
-  const pythonCode = `
-woordje = input("Welk woordje wil je versleutelen? ")
-sleutel = int(input("Welke sleutel wil je gebruiken? "))
-cipher = ""
-for i in woordje:
-    cipher += chr(ord(i) + sleutel)
-print(f"De versleuteling van {woordje} is {cipher}")
-  `;
+  const pythonCode = <?php echo json_encode($instance->pythoncode); ?>;
 
   function updateLabels() {
     document.getElementById("labelExpert").style.display = showExpert ? "inline-block" : "none";

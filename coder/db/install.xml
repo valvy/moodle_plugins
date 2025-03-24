@@ -9,6 +9,7 @@
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false"/>
                 <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
                 <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="pythoncode" TYPE="text" NOTNULL="true" DEFAULT=""/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
             </FIELDS>
