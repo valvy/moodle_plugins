@@ -9,6 +9,9 @@ $PAGE->set_url('/mod/coder/view.php', ['id' => $id]);
 $PAGE->set_title($cm->name);
 $PAGE->set_heading($course->fullname);
 
+// Laad de externe CSS file
+$PAGE->requires->css(new moodle_url('/mod/coder/style.css'));
+
 echo $OUTPUT->header();
 
 global $DB, $USER;
@@ -22,266 +25,6 @@ $bericht = str_replace('{{naam}}', fullname($USER), $bericht);
 <head>
   <meta charset="utf-8">
   <title><?php echo s($instance->pagetitle); ?></title>
-  <style>
-    /* Globale box-sizing regel */
-    *, *::before, *::after {
-      box-sizing: border-box;
-    }
-    #output-example {
-      width: 60%;
-      padding-left: 10px;
-    }
-    /* Basisstijl (licht thema) */
-    body {
-      background-color: #f0f0f0;
-      color: #333;
-      font-family: Arial, sans-serif;
-      transition: background-color 0.3s, color 0.3s;
-      padding: 20px;
-      margin: 0;
-    }
-    /* Laadanimatie styling */
-    #loader {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1000;
-    }
-    .spinner {
-      border: 8px solid #f3f3f3;
-      border-top: 8px solid #007bff;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    /* Overlay om achtergrond interactie te blokkeren */
-    #overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 900;
-      background: rgba(0,0,0,0);
-    }
-    /* Verberg de applicatie tot Pyodide geladen is */
-    #main-container {
-      display: none;
-      margin: 0 20px;
-      width: 99%;
-    }
-    /* Header container met plaatje en tekst */
-    #header-container {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      width: 100%;
-    }
-    #header-image {
-      width: 300px;
-      height: auto;
-      margin-right: 20px;
-    }
-    #header-text {
-      flex: 1;
-      text-align: left;
-    }
-    #header-container h1 {
-      margin: 0;
-      padding: 0;
-    }
-    /* Labels */
-    #difficulty-labels {
-      margin-top: 10px;
-    }
-    .label {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 5px;
-      color: #fff;
-      margin-right: 10px;
-      font-size: 0.9em;
-    }
-    .label.expert { background-color: red; }
-    .label.skilled { background-color: blue; }
-    .label.aspiring { background-color: green; }
-    /* Responsive: bij smalle schermen zet plaatje boven tekst */
-    @media (max-width: 600px) {
-      #header-container {
-        flex-direction: column;
-        align-items: center;
-      }
-      #header-image {
-        margin-right: 0;
-        margin-bottom: 10px;
-      }
-      #header-text {
-        text-align: center;
-      }
-    }
-    /* Knoppen container */
-    #button-container {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-      text-align: left;
-    }
-    .terminal-container { text-align: left; }
-    #toolbar {
-      background-color: #f5f5f5;
-      border: 1px solid #ccc;
-      padding: 3px 0;
-      margin-bottom: 1px;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      transition: background-color 0.3s, border 0.3s;
-    }
-    #toolbar button.icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 10px;
-      padding: 0;
-      background: none;
-      border: none;
-      cursor: pointer;
-      height: 40px;
-    }
-    #toolbar button.icon svg { display: block; margin: auto; }
-    #terminal {
-      display: none;
-      width: 100%;
-      height: 200px;
-      padding: 10px;
-    }
-    .terminal {
-      background: #121212;
-      color: #00ff00;
-      border-radius: 5px;
-      overflow-y: scroll;
-      white-space: pre-wrap;
-      font-family: 'Courier New', Courier, monospace;
-      margin-top: 1px;
-      position: relative;
-      scrollbar-width: auto;
-      scrollbar-color: #007bff #f0f0f0;
-    }
-    .terminal::-webkit-scrollbar { width: 16px; }
-    .terminal::-webkit-scrollbar-track { background: #f0f0f0; }
-    .terminal::-webkit-scrollbar-thumb { background: #007bff; border-radius: 8px; }
-    #terminal::after {
-      content: "_";
-      animation: blink 1s step-end infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-    button.normal {
-      background-color: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 5px;
-      margin: 10px 0;
-      padding: 10px 20px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    /* Input Modal styling */
-    #inputModal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      z-index: 1100;
-    }
-    #inputModal input { width: 80%; }
-    #inputModal button.normal { margin-top: 10px; }
-    /* Submission Modal styling */
-    #submissionModal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      z-index: 1100;
-      justify-content: center;
-      align-items: center;
-      animation: fadeIn 0.5s ease-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.9); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    #submissionModal .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 5px;
-      width: 90%;
-      max-width: 800px;
-      height: 80%;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-    }
-    #submissionModal iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      flex-grow: 1;
-    }
-    #submissionModal .cancelButton {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background-color: #ccc;
-      border: none;
-      border-radius: 5px;
-      padding: 5px 10px;
-      cursor: pointer;
-    }
-    /* Alert Modal styling */
-    #alertModal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      z-index: 1100;
-    }
-    /* Help Modal styling */
-    #helpModal {
-      display: none;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 20px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      z-index: 1100;
-    }
-  </style>
 </head>
 <body>
   <div id="overlay"></div>
@@ -381,7 +124,7 @@ $bericht = str_replace('{{naam}}', fullname($USER), $bericht);
 
   <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
   <script>
-    // Variabelen instellen vanuit de database
+    // Variabelen vanuit de database
     const pythonCode    = <?php echo json_encode($instance->pythoncode ?: ""); ?>;
     const showExpert    = <?php echo json_encode((bool)$instance->showexpert); ?>;
     const showSkilled   = <?php echo json_encode((bool)$instance->showskilled); ?>;
@@ -390,7 +133,7 @@ $bericht = str_replace('{{naam}}', fullname($USER), $bericht);
     const pageTitle     = <?php echo json_encode($instance->pagetitle); ?>;
     const SUBMISSION_URL= <?php echo json_encode($instance->submissionurl); ?>;
 
-    // Stel de pagina titel in en update de submission iframe URL
+    // Stel de pagina titel en de URL van de submission iframe in
     document.getElementById("page-title").innerText = pageTitle;
     document.getElementById("submissionIframe").src = SUBMISSION_URL;
 
