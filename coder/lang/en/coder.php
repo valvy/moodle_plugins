@@ -1,5 +1,5 @@
 <?php
-$string['pluginname'] = 'Mijn eigen activiteit';
-$string['modulename'] = 'Mijn activiteit';
-$string['modulenameplural'] = 'Mijn activiteiten';
-$string['pluginadministration'] = 'Activiteitbeheer';
+$string['pluginname'] = 'Codeeropdracht';
+$string['modulename'] = 'Codeeropdracht';
+$string['modulenameplural'] = 'Codeeropdrachten';
+$string['pluginadministration'] = 'Codeeropdrachtbeheer';
