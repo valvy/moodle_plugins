@@ -16,5 +16,19 @@
                 <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primary key id"/>
             </KEYS>
         </TABLE>
+         <TABLE NAME="codequiz_results" COMMENT="Tabel voor het opslaan van quizresultaten">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primaire sleutel"/>
+                <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Verwijzing naar de codequiz instance"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID van de cursus"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID van de gebruiker"/>
+                <FIELD NAME="labels" TYPE="text" NOTNULL="true" COMMENT="Labels, bijvoorbeeld als JSON-string"/>
+                <FIELD NAME="message" TYPE="text" NOTNULL="true" COMMENT="Adviesbericht"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Aanmaak-timestamp"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primaire sleutel"/>
+            </KEYS>
+        </TABLE>
     </TABLES>
 </XMLDB>

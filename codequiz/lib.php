@@ -26,3 +26,15 @@ function codequiz_delete_instance($id) {
     global $DB;
     return $DB->delete_records('codequiz', ['id' => $id]);
 }
+
+/**
+ * Haal het meest recente quizresultaat op voor een bepaalde gebruiker en codequiz instance.
+ *
+ * @param int $instanceid Het id van de codequiz.
+ * @param int $userid Het id van de gebruiker.
+ * @return stdClass|false Het resultaatrecord of false als er niets gevonden is.
+ */
+function codequiz_get_result($instanceid, $userid) {
+    global $DB;
+    return $DB->get_record('codequiz_results', ['codequizid' => $instanceid, 'userid' => $userid], '*', IGNORE_MULTIPLE);
+}
