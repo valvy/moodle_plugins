@@ -27,7 +27,6 @@ if ($stored_result) {
     $stored_result_data = null;
 }
 echo $OUTPUT->header();
-echo $bericht;
 ?>
 
 <!-- Geef het opgeslagen resultaat (indien aanwezig) door aan JavaScript -->
