@@ -32,7 +32,8 @@ foreach ($files as $file) {
     }
 }
 
-$bericht = format_text($instance->welkomstbericht, FORMAT_HTML);
+$bericht = format_text($instance->welkomstbericht, $instance->welkomstbericht_format);
+
 $bericht = str_replace('{{naam}}', fullname($USER), $bericht);
 
 echo $OUTPUT->header();

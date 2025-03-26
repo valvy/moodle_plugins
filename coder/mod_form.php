@@ -11,11 +11,16 @@ class mod_coder_mod_form extends moodleform_mod {
         $mform->setType('name', PARAM_TEXT);
         $mform->addRule('name', null, 'required');
 
-        // Introductie (Moodle standaard).
+        // Intro (Moodle standaard).
         $this->standard_intro_elements();
 
-        // Welkomstbericht.
-        $mform->addElement('textarea', 'welkomstbericht', 'Bericht aan gebruiker', 'wrap="virtual" rows="5" cols="50"');
+        // Welkomstbericht als rich text.
+        $mform->addElement('editor', 'welkomstbericht', 'Bericht aan gebruiker', null, [
+            'maxfiles' => 0,
+            'maxbytes' => 0,
+            'trusttext' => true,
+            'noclean' => true,
+        ]);
         $mform->setType('welkomstbericht', PARAM_RAW);
         $mform->addRule('welkomstbericht', 'Geef een bericht op', 'required');
 
@@ -61,22 +66,27 @@ class mod_coder_mod_form extends moodleform_mod {
         $mform->addRule('outputexample', 'Geef de content voor output example op', 'required');
         $mform->setDefault('outputexample', '<div>Welk woordje wil je versleutelen? <strong><em>hallo</em></strong><br>Welke sleutel wil je gebruiken? <strong><em>3</em></strong><br>De versleuteling van pizza is kdoor</div>');
 
-        // Afbeelding uploaden (optioneel).
-        // Nieuwe regel:
+        // Header afbeelding (filemanager).
         $mform->addElement('filemanager', 'headerimage', 'Header Image', null, [
             'subdirs' => 0,
             'maxfiles' => 1,
             'accepted_types' => ['image']
         ]);
-        $mform->setType('headerimage', PARAM_INT);
 
-        // Standaard course module elementen (zoals beschikbaarheid).
+        // Cursusmodule instellingen.
         $this->standard_coursemodule_elements();
         $this->add_action_buttons();
     }
 
     function data_preprocessing(&$default_values) {
         if ($this->current->instance) {
+            // RTF welkomstbericht voorbereiden.
+            $default_values['welkomstbericht'] = [
+                'text' => $this->current->welkomstbericht,
+                'format' => $this->current->welkomstbericht_format ?? FORMAT_HTML
+            ];
+
+            // Afbeelding voorbereiden.
             $draftitemid = file_get_submitted_draft_itemid('headerimage');
             file_prepare_draft_area(
                 $draftitemid,
