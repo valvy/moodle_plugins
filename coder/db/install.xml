@@ -9,14 +9,14 @@
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false"/>
                 <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
                 <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true"/>
-                <FIELD NAME="pythoncode" TYPE="text" NOTNULL="true" DEFAULT=""/>
+                <FIELD NAME="pythoncode" TYPE="text" NOTNULL="true"/>
                 <FIELD NAME="showexpert" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
                 <FIELD NAME="showskilled" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
                 <FIELD NAME="showaspiring" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
                 <FIELD NAME="applicatie_naam" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="Opdracht1"/>
                 <FIELD NAME="pagetitle" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="Forensische ICT Opdracht"/>
                 <FIELD NAME="submissionurl" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="https://app.codegra.de/"/>
-                <FIELD NAME="outputexample" TYPE="text" NOTNULL="true" DEFAULT="&lt;div&gt;Welk woordje wil je versleutelen? &lt;strong&gt;&lt;em&gt;hallo&lt;/em&gt;&lt;/strong&gt;&lt;br&gt;Welke sleutel wil je gebruiken? &lt;strong&gt;&lt;em&gt;3&lt;/em&gt;&lt;/strong&gt;&lt;br&gt;De versleuteling van pizza is kdoor&lt;/div&gt;"/>
+                <FIELD NAME="outputexample" TYPE="text" NOTNULL="true"/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
             </FIELDS>
