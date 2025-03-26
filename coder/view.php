@@ -141,31 +141,50 @@ async function runPythonCode() {
 }
 
 function getInputFromUser(promptText) {
-    terminal.innerHTML += `> ${promptText}`;
-    msg_modal.innerHTML = promptText;
-    inputModal.style.display = "block";
-    document.getElementById("overlay").style.display = "block";
+    const inputModal = document.getElementById("inputModal");
+    const overlay = document.getElementById("overlay");
+    const msg_modal = document.getElementById("msg");
+    const userInputEl = document.getElementById("userInput");
+
+    if (inputModal) inputModal.style.display = "block";
+    if (overlay) overlay.style.display = "block";
+    if (msg_modal) msg_modal.innerHTML = promptText;
+    if (userInputEl) userInputEl.value = "";
+
     return new Promise((resolve) => {
         inputResolver = resolve;
-        userInputEl.focus();
+        if (userInputEl) userInputEl.focus();
     });
 }
 
 function submitInput() {
-    inputModal.style.display = "none";
-    document.getElementById("overlay").style.display = "none";
-    const inputValue = userInputEl.value;
-    terminal.innerHTML += `<i>${inputValue}\n</i>`;
+    const inputModal = document.getElementById("inputModal");
+    const overlay = document.getElementById("overlay");
+    const userInputEl = document.getElementById("userInput");
+
+    if (!inputResolver) return;
+
+    const inputValue = userInputEl?.value ?? "";
+
+    if (inputModal) inputModal.style.display = "none";
+    if (overlay) overlay.style.display = "none";
+
+    // Toon input in terminal
+    const terminal = document.getElementById("terminal");
+    if (terminal) {
+        terminal.innerHTML += `<i>${inputValue}\n</i>`;
+    }
+
     userInputEl.value = "";
     inputResolver(inputValue);
+    inputResolver = null; // reset
 }
 
-userInputEl.addEventListener("keydown", (event) => {
+document.getElementById("userInput")?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         submitInput();
     }
 });
-
 function toggleTerminal() {
     const isVisible = window.getComputedStyle(terminal).display !== "none";
     terminal.style.display = isVisible ? "none" : "block";
