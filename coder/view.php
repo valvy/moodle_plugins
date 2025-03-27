@@ -3,6 +3,21 @@ require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
 [$course, $cm] = get_course_and_cm_from_cmid($id, 'coder');
+$modinfo = get_fast_modinfo($course);
+$cms = $modinfo->get_cms();
+$found = false;
+$nextcmid = null;
+
+foreach ($cms as $thiscm) {
+    if ($found && $thiscm->modname === 'coder' && $thiscm->uservisible) {
+        $nextcmid = $thiscm->id;
+        break;
+    }
+    if ($thiscm->id == $cm->id) {
+        $found = true;
+    }
+}
+
 require_login($course, true, $cm);
 
 $context = context_module::instance($cm->id);
@@ -35,7 +50,7 @@ foreach ($files as $file) {
 $bericht = format_text($instance->welkomstbericht, $instance->welkomstbericht_format);
 
 $bericht = str_replace('{{naam}}', ucfirst(fullname($USER)), $bericht);
-
+$nexturl = new moodle_url('/mod/coder/view.php', ['id' => $volgende_cm_id]);
 echo $OUTPUT->header();
 ?>
 <canvas id="confetti-canvas"></canvas>
@@ -151,7 +166,6 @@ function launchConfetti(fromElement = null) {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Bereken startpositie
     let originX = canvas.width / 2;
     let originY = canvas.height;
 
@@ -202,9 +216,11 @@ function launchConfetti(fromElement = null) {
             clearInterval(animation);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.globalAlpha = 1;
+
         }
     }, 16);
 }
+
 
 
 
