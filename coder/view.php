@@ -37,7 +37,6 @@ foreach ($files as $file) {
 $bericht = format_text($instance->welkomstbericht, $instance->welkomstbericht_format);
 
 $bericht = str_replace('{{naam}}', ucfirst(fullname($USER)), $bericht);
-$nexturl = new moodle_url('/mod/coder/view.php', ['id' => $volgende_cm_id]);
 echo $OUTPUT->header();
 ?>
 <canvas id="confetti-canvas"></canvas>
@@ -91,7 +90,7 @@ echo $OUTPUT->header();
   <div class="modal-content">
         <div class="submission-header">
           <button class="cancelButton" onclick="closeSubmissionModal()">Cancel</button>
-          <button class="normal" onclick="markComplete()" id="completeButton">Ik ben klaar!</button>
+          <button class="normal" onclick="markComplete()" id="completeButton">Ik heb het ingeleverd!</button>
         </div>
 
     <iframe id="submissionIframe" src="<?php echo $instance->submissionurl; ?>"></iframe>
