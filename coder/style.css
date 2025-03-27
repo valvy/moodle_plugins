@@ -296,3 +296,13 @@ button.normal {
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
   z-index: 1100;
 }
+
+#confetti-canvas {
+  position: fixed;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+}

@@ -38,6 +38,7 @@ $bericht = str_replace('{{naam}}', ucfirst(fullname($USER)), $bericht);
 
 echo $OUTPUT->header();
 ?>
+<canvas id="confetti-canvas"></canvas>
 <div id="main-container">
     <div id="header-container">
         <?php if (!empty($headerimageurl)) { ?>
@@ -86,10 +87,10 @@ echo $OUTPUT->header();
 </div>
 <div id="submissionModal">
   <div class="modal-content">
-<div class="submission-header">
-  <button class="cancelButton" onclick="closeSubmissionModal()">Cancel</button>
-  <button class="normal" onclick="markComplete()" id="completeButton">Ik ben klaar!</button>
-</div>
+        <div class="submission-header">
+          <button class="cancelButton" onclick="closeSubmissionModal()">Cancel</button>
+          <button class="normal" onclick="markComplete()" id="completeButton">Ik ben klaar!</button>
+        </div>
 
     <iframe id="submissionIframe" src="<?php echo $instance->submissionurl; ?>"></iframe>
   </div>
@@ -144,22 +145,85 @@ async function runPythonCode() {
         terminal.innerHTML += "Fout: " + error + "\n";
     }
 }
+function launchConfetti(fromElement = null) {
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Bereken startpositie
+    let originX = canvas.width / 2;
+    let originY = canvas.height;
+
+    if (fromElement) {
+        const rect = fromElement.getBoundingClientRect();
+        originX = rect.left + rect.width / 2;
+        originY = rect.top + rect.height / 2;
+    }
+
+    const number = 120;
+    const particles = [];
+
+    for (let i = 0; i < number; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 10 + 6;
+
+        particles.push({
+            x: originX,
+            y: originY,
+            r: Math.random() * 10 + 4,
+            dx: Math.cos(angle) * speed,
+            dy: Math.sin(angle) * speed,
+            color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+            alpha: 1,
+            decay: Math.random() * 0.01 + 0.004
+        });
+    }
+
+    const animation = setInterval(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach(p => {
+            p.x += p.dx;
+            p.y += p.dy;
+            p.alpha -= p.decay;
+        });
+
+        for (let p of particles) {
+            if (p.alpha <= 0) continue;
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        if (particles.every(p => p.alpha <= 0)) {
+            clearInterval(animation);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1;
+        }
+    }, 16);
+}
+
+
 
 function markComplete() {
-   fetch("complete.php?id=<?php echo $cm->id; ?>&sesskey=<?php echo sesskey(); ?>", {
+    const btn = document.getElementById("completeButton");
+
+    fetch("complete.php?id=<?php echo $cm->id; ?>&sesskey=<?php echo sesskey(); ?>", {
         method: "POST",
         headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const btn = document.getElementById("completeButton");
             btn.innerText = "Afgerond ✔️";
             btn.disabled = true;
+            launchConfetti(btn); // 🎉 afvuren op knoplocatie
         } else {
             alert("Er ging iets mis bij het afronden.");
         }
@@ -169,6 +233,7 @@ function markComplete() {
         alert("Fout bij afronden.");
     });
 }
+
 
 function getInputFromUser(promptText) {
     const inputModal = document.getElementById("inputModal");
