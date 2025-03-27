@@ -3,20 +3,7 @@ require_once(__DIR__ . '/../../config.php');
 
 $id = required_param('id', PARAM_INT);
 [$course, $cm] = get_course_and_cm_from_cmid($id, 'coder');
-$modinfo = get_fast_modinfo($course);
-$cms = $modinfo->get_cms();
-$found = false;
-$nextcmid = null;
 
-foreach ($cms as $thiscm) {
-    if ($found && $thiscm->modname === 'coder' && $thiscm->uservisible) {
-        $nextcmid = $thiscm->id;
-        break;
-    }
-    if ($thiscm->id == $cm->id) {
-        $found = true;
-    }
-}
 
 require_login($course, true, $cm);
 
