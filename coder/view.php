@@ -34,7 +34,7 @@ foreach ($files as $file) {
 
 $bericht = format_text($instance->welkomstbericht, $instance->welkomstbericht_format);
 
-$bericht = str_replace('{{naam}}', fullname($USER), $bericht);
+$bericht = str_replace('{{naam}}', ucfirst(fullname($USER)), $bericht);
 
 echo $OUTPUT->header();
 ?>
@@ -85,10 +85,14 @@ echo $OUTPUT->header();
     <button class="normal" onclick="submitInput()">OK</button>
 </div>
 <div id="submissionModal">
-    <div class="modal-content">
-        <button class="cancelButton" onclick="closeSubmissionModal()">Cancel</button>
-        <iframe id="submissionIframe" src="<?php echo $instance->submissionurl; ?>"></iframe>
-    </div>
+  <div class="modal-content">
+<div class="submission-header">
+  <button class="cancelButton" onclick="closeSubmissionModal()">Cancel</button>
+  <button class="normal" onclick="markComplete()" id="completeButton">Ik ben klaar!</button>
+</div>
+
+    <iframe id="submissionIframe" src="<?php echo $instance->submissionurl; ?>"></iframe>
+  </div>
 </div>
 <div id="alertModal">
     <p id="alertMessage"></p>
@@ -139,6 +143,31 @@ async function runPythonCode() {
     } catch (error) {
         terminal.innerHTML += "Fout: " + error + "\n";
     }
+}
+
+function markComplete() {
+   fetch("complete.php?id=<?php echo $cm->id; ?>&sesskey=<?php echo sesskey(); ?>", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.getElementById("completeButton");
+            btn.innerText = "Afgerond ✔️";
+            btn.disabled = true;
+        } else {
+            alert("Er ging iets mis bij het afronden.");
+        }
+    })
+    .catch(err => {
+        console.error("Error:", err);
+        alert("Fout bij afronden.");
+    });
 }
 
 function getInputFromUser(promptText) {
