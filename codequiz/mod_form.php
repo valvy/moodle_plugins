@@ -26,19 +26,19 @@ class mod_codequiz_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
-    /**
-     * ✅ Completionregel wordt hier correct geregistreerd én aangemaakt.
-     */
-    public function add_completion_rules() {
+   public function add_completion_rules() {
         $mform = $this->_form;
 
-        $mform->addElement('advcheckbox', 'completionpass', get_string('completionpass', 'codequiz'), '', [0, 1]);
-        $mform->setDefault('completionpass', 1);
+        $mform->addElement('advcheckbox', 'completionpass',
+            get_string('completionpass', 'codequiz'),
+            get_string('completionpass_label', 'codequiz') // 🚨 Nieuwe taalstring
+        );
+        $mform->setDefault('completionpass', 0);
         $mform->addHelpButton('completionpass', 'completionpass', 'codequiz');
 
+        // 🚨 Verplicht voor Moodle's completion handling
         return ['completionpass'];
     }
-
     /**
      * ✅ Moodle checkt hiermee of de regel actief is.
      */
@@ -55,18 +55,27 @@ class mod_codequiz_mod_form extends moodleform_mod {
         ];
     }
 
-    /**
-     * ✅ Verbindt de formwaarde aan de internal completion engine.
-     */
+   // Wijzig de get_data functie naar:
     public function get_data() {
         $data = parent::get_data();
-
         if ($data) {
-            $data->customcompletionrules = [
-                'completionpass' => !empty($data->completionpass)
-            ];
+            $data->completionpass = !empty($data->completionpass) ? 1 : 0;
         }
-
         return $data;
+    }
+    public function data_preprocessing(&$defaultvalues) {
+        parent::data_preprocessing($defaultvalues);
+
+        // 🚨 Expliciet zetten van de checkbox waarde
+        $defaultvalues['completionpass'] = $this->get_current_completionpass();
+    }
+
+    private function get_current_completionpass() {
+        global $DB;
+
+        if ($this->current && $this->current->id) {
+            return $DB->get_field('codequiz', 'completionpass', ['id' => $this->current->id]);
+        }
+        return 0;
     }
 }

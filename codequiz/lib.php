@@ -64,32 +64,32 @@ function codequiz_get_result($instanceid, $userid) {
     ], '*', IGNORE_MULTIPLE);
 }
 
-/**
- * Completionvoorwaarde: is de quiz voltooid door de gebruiker?
- */
 function codequiz_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
 
-    if ($type !== COMPLETION_AND) {
-        return false;
+    // 1. Check of de module de rule gebruikt
+    $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
+    if (empty($instance->completionpass)) {
+        return false;  // 🚨 Regel is niet geactiveerd
     }
 
-    // Check of completionpass actief is
-    if (empty($cm->customdata['customcompletionrules']['completionpass'])) {
-        return false;
-    }
-
+    // 2. Check of de gebruiker een resultaat heeft
     return $DB->record_exists('codequiz_results', [
         'codequizid' => $cm->instance,
         'userid' => $userid
     ]);
 }
 
-/**
- * Namen van custom completionregels.
- */
+// Update de get_completion_rule_descriptions functie:
 function codequiz_get_completion_rule_descriptions($cm) {
-    return ['completionpass' => get_string('completionpass', 'codequiz')];
+    global $DB;
+    $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
+
+    $descriptions = [];
+    if (!empty($instance->completionpass)) {
+        $descriptions[] = get_string('completionpass', 'codequiz');
+    }
+    return $descriptions;
 }
 
 /**
@@ -99,15 +99,14 @@ function codequiz_completion_rule_enabled($data) {
     return !empty($data->completionpass);
 }
 
-/**
- * Zorgt ervoor dat Moodle je custom completionregel herkent in de UI.
- */
+
 function codequiz_get_coursemodule_info($coursemodule) {
     global $DB;
+    $instance = $DB->get_record('codequiz', ['id' => $coursemodule->instance]);
 
     $info = new cached_cm_info();
-    $instance = $DB->get_record('codequiz', ['id' => $coursemodule->instance], '*', MUST_EXIST);
 
+    // 🚨 Directe toewijzing aan customcompletionrules ipv customdata
     if (!empty($instance->completionpass)) {
         $info->customcompletionrules = ['completionpass' => 1];
     }
