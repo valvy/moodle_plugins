@@ -22,8 +22,37 @@ $PAGE->set_pagelayout('incourse');
 $results = $DB->get_records('codequiz_results', ['codequizid' => $instanceid]);
 $totalSubmissions = count($results);
 
+// Tel per label het aantal inzendingen
+$labelCounts = [];
+foreach ($results as $result) {
+    $decodedLabels = json_decode($result->labels, true);
+    if (is_array($decodedLabels)) {
+        foreach ($decodedLabels as $label) {
+            if (isset($labelCounts[$label])) {
+                $labelCounts[$label]++;
+            } else {
+                $labelCounts[$label] = 1;
+            }
+        }
+    } else {
+        if (!empty($result->labels)) {
+            if (isset($labelCounts[$result->labels])) {
+                $labelCounts[$result->labels]++;
+            } else {
+                $labelCounts[$result->labels] = 1;
+            }
+        }
+    }
+}
+
+$chartLabels = array_keys($labelCounts);
+$chartData = array_values($labelCounts);
+
 echo $OUTPUT->header();
 ?>
+
+<!-- Inclusie van Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 .dashboard-wrapper {
@@ -46,6 +75,11 @@ echo $OUTPUT->header();
 <div class="dashboard-wrapper">
     <h2>Code Quiz Dashboard</h2>
     <p>Totaal aantal inzendingen: <?php echo $totalSubmissions; ?></p>
+
+    <!-- Pie Chart voor de uitgedeelde labels -->
+    <div style="width: 400px; margin-bottom: 20px;">
+        <canvas id="labelsPieChart" width="400" height="400"></canvas>
+    </div>
 
     <?php if ($totalSubmissions > 0): ?>
         <table class="dashboard-table">
@@ -85,7 +119,40 @@ echo $OUTPUT->header();
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard geladen');
-    // Voeg hier extra JavaScript toe voor interactiviteit of verdere functionaliteit
+
+    // Pie chart initialisatie
+    var ctx = document.getElementById('labelsPieChart').getContext('2d');
+    var chartLabels = <?php echo json_encode($chartLabels); ?>;
+    var chartData = <?php echo json_encode($chartData); ?>;
+    var pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                data: chartData,
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'Verdeelde labels'
+                }
+            }
+        }
+    });
 });
 </script>
 
