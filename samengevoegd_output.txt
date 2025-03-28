@@ -1,77 +1,4 @@
 
-==== codequiz/view.php ====
-<?php
-// ===== ./codequiz/view.php =====
-
-require_once('../../config.php');
-require_once($CFG->dirroot.'/mod/codequiz/lib.php');
-
-$id = required_param('id', PARAM_INT);
-[$course, $cm] = get_course_and_cm_from_cmid($id, 'codequiz');
-require_login($course, true, $cm);
-
-$PAGE->set_url('/mod/codequiz/view.php', ['id' => $id]);
-$PAGE->set_title($cm->name);
-$PAGE->set_heading($course->fullname);
-$PAGE->set_pagelayout('incourse');
-
-global $DB, $USER;
-$instance = $DB->get_record('codequiz', ['id' => $cm->instance], '*', MUST_EXIST);
-$bericht = format_text($instance->welkomstbericht, FORMAT_HTML);
-$bericht = str_replace('{{naam}}', fullname($USER), $bericht);
-
-$stored_result = codequiz_get_result($cm->instance, $USER->id);
-if ($stored_result) {
-    $stored_result_data = [
-        "labels" => json_decode($stored_result->labels, true),
-        "message" => $stored_result->message
-    ];
-} else {
-    $stored_result_data = null;
-}
-
-$questions = $DB->get_records('codequiz_questions', ['codequizid' => $cm->instance], 'sortorder ASC');
-$vraagSchermen = [];
-foreach ($questions as $q) {
-    $vraagSchermen[] = [
-        'vraag' => $q->vraag,
-        'mediaHTML' => $q->mediahtml,
-        'crop' => (bool)$q->crop,
-        'opties' => json_decode($q->opties, true)
-    ];
-}
-
-echo $OUTPUT->header();
-?>
-
-<script>
-  window.codequizConfig = {
-    courseid: <?php echo $course->id; ?>,
-    instanceid: <?php echo $cm->instance; ?>,
-    storedResult: <?php echo json_encode($stored_result_data); ?>,
-    vraagSchermen: <?php echo json_encode($vraagSchermen); ?>
-  };
-</script>
-
-<link rel="stylesheet" href="<?php echo $CFG->wwwroot; ?>/mod/codequiz/styles.css">
-
-<div class="codequiz-wrapper">
-  <div id="quiz-container">
-    <div class="nav-buttons">
-      <button id="prevBtn">Vorige</button>
-      <button id="nextBtn" disabled>Volgende</button>
-    </div>
-  </div>
-</div>
-
-
-<script src="script.js"></script>
-
-<?php
-echo $OUTPUT->footer();
-
-
-
 ==== codequiz/delete_result.php ====
 <?php
 require_once('../../config.php');
@@ -152,39 +79,26 @@ echo json_encode(['status' => 'success', 'id' => $insertid]);
 
 ==== codequiz/lib.php ====
 <?php
-// ===== ./codequiz/lib.php =====
+// ===== ./mod/codequiz/lib.php =====
 
 defined('MOODLE_INTERNAL') || die();
 
-function codequiz_reset_user_completion($userid, $courseid, $instanceid) {
-    global $DB;
-
-    if ($cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid)) {
-        $DB->delete_records('course_modules_completion', [
-            'coursemoduleid' => $cm->id,
-            'userid' => $userid
-        ]);
-
-        $completion = new completion_info(get_course($courseid));
-        $completion->invalidatecache($cm->id, $userid);
-    }
-}
-
+/**
+ * Specificeer welke Moodle-features worden ondersteund.
+ */
 function codequiz_supports($feature) {
     switch ($feature) {
-        case FEATURE_MOD_INTRO:
-            return true;
-        case FEATURE_COMPLETION_TRACKS_VIEWS:
-            return true;
-        case FEATURE_COMPLETION_HAS_RULES:
-            return true;
-        case FEATURE_GRADE_HAS_GRADE:
-            return false;
-        default:
-            return null;
+        case FEATURE_MOD_INTRO: return true;
+        case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
+        case FEATURE_COMPLETION_HAS_RULES: return true;
+        case FEATURE_GRADE_HAS_GRADE: return false; // Geen cijfers
+        default: return null;
     }
 }
 
+/**
+ * Voeg nieuwe instantie toe aan de database.
+ */
 function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
@@ -198,6 +112,9 @@ function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = nu
     return $id;
 }
 
+/**
+ * Update bestaande instantie.
+ */
 function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
@@ -211,6 +128,9 @@ function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform =
     return true;
 }
 
+/**
+ * Verwijder een codequiz-instantie.
+ */
 function codequiz_delete_instance($id) {
     global $DB;
 
@@ -219,6 +139,9 @@ function codequiz_delete_instance($id) {
     return $DB->delete_records('codequiz', ['id' => $id]);
 }
 
+/**
+ * Ophalen van resultaat van gebruiker.
+ */
 function codequiz_get_result($instanceid, $userid) {
     global $DB;
     return $DB->get_record('codequiz_results', [
@@ -227,6 +150,9 @@ function codequiz_get_result($instanceid, $userid) {
     ], '*', IGNORE_MULTIPLE);
 }
 
+/**
+ * Completion: is deze activiteit voltooid?
+ */
 function codequiz_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
 
@@ -244,6 +170,9 @@ function codequiz_get_completion_state($course, $cm, $userid, $type) {
     );
 }
 
+/**
+ * Completion: omschrijving voor instelling.
+ */
 function codequiz_get_completion_rule_descriptions($cm) {
     global $DB;
     $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
@@ -268,6 +197,9 @@ function codequiz_get_coursemodule_info($coursemodule) {
     return $info;
 }
 
+/**
+ * Sla de herhaalbare vragen op.
+ */
 function codequiz_save_questions($quizid, $data) {
     global $DB;
 
@@ -328,6 +260,93 @@ function codequiz_save_questions($quizid, $data) {
     }
 }
 
+/**
+ * Bestandsserver: pluginfile handler voor mediaupload.
+ */
+function codequiz_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    global $DB;
+
+    if ($context->contextlevel != CONTEXT_MODULE) {
+        return false;
+    }
+
+    require_course_login($course, true, $cm);
+
+    if (!has_capability('mod/codequiz:view', $context)) {
+        return false;
+    }
+
+    if ($filearea !== 'mediaupload') {
+        return false;
+    }
+
+    $itemid = array_shift($args);
+    $filepath = '/';
+    $filename = array_pop($args);
+    if (!empty($args)) {
+        $filepath .= implode('/', $args) . '/';
+    }
+
+    $fs = get_file_storage();
+    $file = $fs->get_file($context->id, 'mod_codequiz', $filearea, $itemid, $filepath, $filename);
+
+    if (!$file || $file->is_directory()) {
+        return false;
+    }
+
+    send_stored_file($file, 0, 0, $forcedownload, $options);
+}
+
+
+
+==== codequiz/pluginfile.php ====
+<?php
+// ===== ./mod/codequiz/pluginfile.php =====
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../../config.php');
+require_login();
+
+function codequiz_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    global $DB;
+
+    if ($context->contextlevel != CONTEXT_MODULE) {
+        return false;
+    }
+
+    // Controleer of de gebruiker toegang heeft
+    require_course_login($course, true, $cm);
+
+    if (!has_capability('mod/codequiz:view', $context)) {
+        return false;
+    }
+
+    // Alleen bestanden in 'mediaupload' worden geserveerd
+    if ($filearea !== 'mediaupload') {
+        return false;
+    }
+
+    // Parameters uit de $args array
+    // args = [itemid, [path1, path2, ...,] filename]
+    $itemid = array_shift($args);
+    $filepath = '/';
+    $filename = array_pop($args);
+    if (!empty($args)) {
+        $filepath .= implode('/', $args) . '/';
+    }
+
+    $fs = get_file_storage();
+    $file = $fs->get_file($context->id, 'mod_codequiz', $filearea, $itemid, $filepath, $filename);
+
+    if (!$file || $file->is_directory()) {
+        return false;
+    }
+
+    // Lever bestand op
+    send_stored_file($file, 0, 0, $forcedownload, $options);
+}
+
+
 
 ==== codequiz/mod_form.php ====
 <?php
@@ -346,11 +365,6 @@ class mod_codequiz_mod_form extends moodleform_mod {
 
         // Introductie
         $this->standard_intro_elements();
-
-        // Welkomstbericht
-        $mform->addElement('textarea', 'welkomstbericht', get_string('welkomstbericht', 'codequiz'), 'wrap="virtual" rows="5" cols="50"');
-        $mform->setType('welkomstbericht', PARAM_RAW);
-        $mform->addRule('welkomstbericht', get_string('required'), 'required', null, 'client');
 
         // Herhaalbare vragen
         $repeatarray = [];
@@ -465,46 +479,80 @@ class mod_codequiz_mod_form extends moodleform_mod {
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_codequiz';
-$plugin->version   = 2024032454;
+$plugin->version   = 2024032470;
 $plugin->requires  = 2022112800; // minimaal Moodle 4.x
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = 'v1.0';
 
 
 
-==== codequiz/pluginfile.php ====
+==== codequiz/view.php ====
 <?php
-// ===== ./mod/codequiz/pluginfile.php =====
-defined('MOODLE_INTERNAL') || die();
+// ===== ./codequiz/view.php =====
 
-require_once(__DIR__ . '/../../config.php');
-require_login();
+require_once('../../config.php');
+require_once($CFG->dirroot.'/mod/codequiz/lib.php');
 
-$context = get_context_instance_by_id($contextid);
+$id = required_param('id', PARAM_INT);
+[$course, $cm] = get_course_and_cm_from_cmid($id, 'codequiz');
+require_login($course, true, $cm);
 
-if ($context->contextlevel != CONTEXT_MODULE) {
-    send_file_not_found();
+$PAGE->set_url('/mod/codequiz/view.php', ['id' => $id]);
+$PAGE->set_title($cm->name);
+$PAGE->set_heading($course->fullname);
+$PAGE->set_pagelayout('incourse');
+
+global $DB, $USER;
+$instance = $DB->get_record('codequiz', ['id' => $cm->instance], '*', MUST_EXIST);
+$stored_result = codequiz_get_result($cm->instance, $USER->id);
+if ($stored_result) {
+    $stored_result_data = [
+        "labels" => json_decode($stored_result->labels, true),
+        "message" => $stored_result->message
+    ];
+} else {
+    $stored_result_data = null;
 }
 
-$cm = get_coursemodule_from_id('codequiz', $context->instanceid, 0, false, MUST_EXIST);
-$course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-
-require_course_login($course, true, $cm);
-
-// Check capability
-if (!has_capability('mod/codequiz:view', $context)) {
-    send_file_not_found();
+$questions = $DB->get_records('codequiz_questions', ['codequizid' => $cm->instance], 'sortorder ASC');
+$vraagSchermen = [];
+foreach ($questions as $q) {
+    $vraagSchermen[] = [
+        'vraag' => $q->vraag,
+        'mediaHTML' => $q->mediahtml,
+        'crop' => (bool)$q->crop,
+        'opties' => json_decode($q->opties, true)
+    ];
 }
 
-// Serve file
-$fs = get_file_storage();
-$file = $fs->get_file($context->id, 'mod_codequiz', 'mediaupload', $itemid, $filepath, $filename);
+echo $OUTPUT->header();
+?>
 
-if (!$file || $file->is_directory()) {
-    send_file_not_found();
-}
+<script>
+  window.codequizConfig = {
+    courseid: <?php echo $course->id; ?>,
+    instanceid: <?php echo $cm->instance; ?>,
+    storedResult: <?php echo json_encode($stored_result_data); ?>,
+    vraagSchermen: <?php echo json_encode($vraagSchermen); ?>
+  };
+</script>
 
-send_stored_file($file, 0, 0, true);
+<link rel="stylesheet" href="<?php echo $CFG->wwwroot; ?>/mod/codequiz/styles.css">
+
+<div class="codequiz-wrapper">
+  <div id="quiz-container">
+    <div class="nav-buttons">
+      <button id="prevBtn">Vorige</button>
+      <button id="nextBtn" disabled>Volgende</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="script.js"></script>
+
+<?php
+echo $OUTPUT->footer();
 
 
 
@@ -556,7 +604,6 @@ $capabilities = [
                 <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the activity"/>
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false" COMMENT="Introduction description"/>
                 <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" COMMENT="Intro format"/>
-                <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true" COMMENT="Welcome message for user"/>
                 <FIELD NAME="completionpass" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Completion rule: mark complete after result"/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp modified"/>

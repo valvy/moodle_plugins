@@ -10,3 +10,4 @@ $string['completionpass_help'] = 'De activiteit wordt als voltooid beschouwd zod
 $string['completionpass_label'] = 'Quiz voltooid na resultaat';
 $string['welkomstbericht'] = 'Bericht aan gebruiker';
 $string['name'] = 'Activiteitsnaam';
+$string['dashboard'] = 'Dashboard';

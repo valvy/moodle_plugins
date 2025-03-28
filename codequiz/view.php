@@ -37,6 +37,13 @@ foreach ($questions as $q) {
 }
 
 echo $OUTPUT->header();
+
+// Voeg een dashboard navigatielink toe voor gebruikers met de juiste capability
+$context = context_module::instance($cm->id);
+if (has_capability('mod/codequiz:managedashboard', $context)) {
+    $dashboardurl = new moodle_url('/mod/codequiz/dashboard.php', ['courseid' => $course->id, 'instanceid' => $cm->instance]);
+    echo html_writer::tag('div', html_writer::link($dashboardurl, get_string('dashboard', 'codequiz'), ['class' => 'dashboard-link']), ['style' => 'margin-bottom: 20px;']);
+}
 ?>
 
 <script>
@@ -58,7 +65,6 @@ echo $OUTPUT->header();
     </div>
   </div>
 </div>
-
 
 <script src="script.js"></script>
 
