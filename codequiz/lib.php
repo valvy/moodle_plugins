@@ -1,6 +1,21 @@
 <?php
 defined('MOODLE_INTERNAL') || die();
 
+function codequiz_reset_user_completion($userid, $courseid, $instanceid) {
+    global $DB;
+
+    if ($cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid)) {
+        $DB->delete_records('course_modules_completion', [
+            'coursemoduleid' => $cm->id,
+            'userid' => $userid
+        ]);
+
+        // Forceer recomputatie
+        $completion = new completion_info(get_course($courseid));
+        $completion->invalidatecache($cm->id, $userid);
+    }
+}
+
 /**
  * Welke Moodle features deze module ondersteunt.
  */
@@ -67,24 +82,19 @@ function codequiz_get_result($instanceid, $userid) {
 function codequiz_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
 
-    // Check of de completion rule actief is
-    $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
-    if (!$instance || empty($instance->completionpass)) {
-        return $type; // Geen custom rule actief, retourneer originele status
-    }
-
-    // Check of er een resultaat bestaat
-    $has_result = $DB->record_exists('codequiz_results', [
-        'codequizid' => $cm->instance,
-        'userid' => $userid
-    ]);
-
-    // Voor COMPLETION_AND logica:
-    if ($type === COMPLETION_AND) {
-        return $has_result;
-    }
-    // Voor COMPLETION_OR (niet gebruikt in dit geval):
-    return $has_result || $type;
+    // Directe database check zonder instance lookup
+    return $DB->record_exists_sql(
+        "SELECT 1
+         FROM {codequiz_results} cr
+         JOIN {codequiz} c ON c.id = cr.codequizid
+         WHERE cr.userid = :userid
+           AND c.id = :instanceid
+           AND c.completionpass = 1",
+        [
+            'userid' => $userid,
+            'instanceid' => $cm->instance
+        ]
+    );
 }
 
 // Update de get_completion_rule_descriptions functie:

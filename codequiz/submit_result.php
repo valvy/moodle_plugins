@@ -21,6 +21,15 @@ $record->timecreated = time();
 
 // Sla het resultaat op in de tabel.
 $insertid = $DB->insert_record('codequiz_results', $record);
+if ($insertid) {
+    // Forceer completion update
+    require_once($CFG->libdir.'/completionlib.php');
 
-// Geef een JSON-response terug.
+    $course = get_course($courseid);
+    $cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid);
+
+    $completion = new completion_info($course);
+    $completion->update_state($cm, COMPLETION_COMPLETE, $USER->id);
+}
+
 echo json_encode(['status' => 'success', 'id' => $insertid]);
