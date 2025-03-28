@@ -15,9 +15,6 @@ $PAGE->set_pagelayout('incourse');
 
 global $DB, $USER;
 $instance = $DB->get_record('codequiz', ['id' => $cm->instance], '*', MUST_EXIST);
-$bericht = format_text($instance->welkomstbericht, FORMAT_HTML);
-$bericht = str_replace('{{naam}}', fullname($USER), $bericht);
-
 $stored_result = codequiz_get_result($cm->instance, $USER->id);
 if ($stored_result) {
     $stored_result_data = [

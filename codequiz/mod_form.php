@@ -15,11 +15,6 @@ class mod_codequiz_mod_form extends moodleform_mod {
         // Introductie
         $this->standard_intro_elements();
 
-        // Welkomstbericht
-        $mform->addElement('textarea', 'welkomstbericht', get_string('welkomstbericht', 'codequiz'), 'wrap="virtual" rows="5" cols="50"');
-        $mform->setType('welkomstbericht', PARAM_RAW);
-        $mform->addRule('welkomstbericht', get_string('required'), 'required', null, 'client');
-
         // Herhaalbare vragen
         $repeatarray = [];
 
