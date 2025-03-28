@@ -54,12 +54,14 @@ echo $OUTPUT->header();
 <link rel="stylesheet" href="<?php echo $CFG->wwwroot; ?>/mod/codequiz/styles.css">
 
 <div class="codequiz-wrapper">
-  <div id="quiz-container"></div>
-  <div class="nav-buttons">
-    <button id="prevBtn">Vorige</button>
-    <button id="nextBtn" disabled>Volgende</button>
+  <div id="quiz-container">
+    <div class="nav-buttons">
+      <button id="prevBtn">Vorige</button>
+      <button id="nextBtn" disabled>Volgende</button>
+    </div>
   </div>
 </div>
+
 
 <script src="script.js"></script>
 

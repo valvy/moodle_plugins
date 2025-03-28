@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const schermen = config.vraagSchermen.map(v => new Scherm(v.vraag, v.mediaHTML, v.opties, v.crop));
 
   const container = document.getElementById("quiz-container");
+  const navButtons = document.querySelector(".nav-buttons");
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
 
@@ -52,7 +53,7 @@ document.addEventListener("DOMContentLoaded", function () {
     wrapper.appendChild(vraagDiv);
     wrapper.appendChild(mediaDiv);
     screen.appendChild(wrapper);
-    container.insertBefore(screen, container.querySelector(".nav-buttons"));
+    container.insertBefore(screen, navButtons);
     screens.push(screen);
   });
 
@@ -118,6 +119,8 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function renderFinalScreen(labels, message) {
+    navButtons.remove();
+
     container.innerHTML = `
       <canvas id="matrix"></canvas>
       <div class="final-content">
@@ -193,8 +196,8 @@ document.addEventListener("DOMContentLoaded", function () {
   function startMatrix() {
     const canvas = document.getElementById("matrix");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = container.offsetWidth;
+    canvas.height = container.offsetHeight;
     const words = ["print", "python", "for", "if", "class", "input", "import", "return"];
     const fontSize = 16;
     const columnWidth = 45;
