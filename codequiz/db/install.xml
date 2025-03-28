@@ -1,3 +1,11 @@
+<?php
+// Hieronder volgt een aangepaste versie van de Moodle plugin "codequiz"
+// met configureerbare vragen via een eigen tabel, inclusief media (images/video),
+// met behoud van bestaande functionaliteiten zoals completion, zonder gebruik te maken van grades.
+
+// BELANGRIJK: je moet ook het bestand `install.xml` aanpassen om de nieuwe tabel toe te voegen.
+
+// ===== ./codequiz/db/install.xml =====
 <?xml version="1.0" encoding="UTF-8" ?>
 <XMLDB PATH="mod/codequiz/db" VERSION="20250328" COMMENT="XMLDB schema for codequiz module">
     <TABLES>
@@ -9,7 +17,6 @@
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false" COMMENT="Introduction description"/>
                 <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" COMMENT="Intro format"/>
                 <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true" COMMENT="Welcome message for user"/>
-                <FIELD NAME="outputexample" TYPE="text" NOTNULL="false" COMMENT="Example output for user"/>
                 <FIELD NAME="completionpass" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Completion rule: mark complete after result"/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp modified"/>
@@ -19,18 +26,33 @@
             </KEYS>
         </TABLE>
 
-        <TABLE NAME="codequiz_results" COMMENT="Tabel voor het opslaan van quizresultaten">
+        <TABLE NAME="codequiz_questions" COMMENT="Configureerbare vragen per activiteit">
             <FIELDS>
-                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primaire sleutel"/>
-                <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Verwijzing naar de codequiz instance"/>
-                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID van de cursus"/>
-                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="ID van de gebruiker"/>
-                <FIELD NAME="labels" TYPE="text" NOTNULL="true" COMMENT="Labels, bijvoorbeeld als JSON-string"/>
-                <FIELD NAME="message" TYPE="text" NOTNULL="true" COMMENT="Adviesbericht"/>
-                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Aanmaak-timestamp"/>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="vraag" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="mediahtml" TYPE="text" NOTNULL="false"/>
+                <FIELD NAME="crop" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+                <FIELD NAME="opties" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="sortorder" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
             </FIELDS>
             <KEYS>
-                <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primaire sleutel"/>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
+
+        <TABLE NAME="codequiz_results" COMMENT="Resultaten">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+                <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+                <FIELD NAME="labels" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="message" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
             </KEYS>
         </TABLE>
     </TABLES>

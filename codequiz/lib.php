@@ -1,4 +1,6 @@
 <?php
+// ===== ./codequiz/lib.php =====
+
 defined('MOODLE_INTERNAL') || die();
 
 function codequiz_reset_user_completion($userid, $courseid, $instanceid) {
@@ -10,15 +12,11 @@ function codequiz_reset_user_completion($userid, $courseid, $instanceid) {
             'userid' => $userid
         ]);
 
-        // Forceer recomputatie
         $completion = new completion_info(get_course($courseid));
         $completion->invalidatecache($cm->id, $userid);
     }
 }
 
-/**
- * Welke Moodle features deze module ondersteunt.
- */
 function codequiz_supports($feature) {
     switch ($feature) {
         case FEATURE_MOD_INTRO:
@@ -27,14 +25,13 @@ function codequiz_supports($feature) {
             return true;
         case FEATURE_COMPLETION_HAS_RULES:
             return true;
+        case FEATURE_GRADE_HAS_GRADE:
+            return false; // GEEN GRADES
         default:
             return null;
     }
 }
 
-/**
- * Toevoegen van een nieuwe activiteit.
- */
 function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
@@ -42,12 +39,11 @@ function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = nu
     $data->timemodified = $data->timecreated;
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
 
-    return $DB->insert_record('codequiz', $data);
+    $id = $DB->insert_record('codequiz', $data);
+    codequiz_save_questions($id, $data);
+    return $id;
 }
 
-/**
- * Bijwerken van een bestaande activiteit.
- */
 function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
@@ -55,22 +51,19 @@ function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform =
     $data->id = $data->instance;
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
 
-    return $DB->update_record('codequiz', $data);
+    $DB->update_record('codequiz', $data);
+    codequiz_save_questions($data->id, $data);
+    return true;
 }
 
-/**
- * Verwijderen van een activiteit en bijbehorende resultaten.
- */
 function codequiz_delete_instance($id) {
     global $DB;
 
     $DB->delete_records('codequiz_results', ['codequizid' => $id]);
+    $DB->delete_records('codequiz_questions', ['codequizid' => $id]);
     return $DB->delete_records('codequiz', ['id' => $id]);
 }
 
-/**
- * Ophalen van eerder opgeslagen resultaat.
- */
 function codequiz_get_result($instanceid, $userid) {
     global $DB;
     return $DB->get_record('codequiz_results', [
@@ -82,7 +75,6 @@ function codequiz_get_result($instanceid, $userid) {
 function codequiz_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
 
-    // Directe database check zonder instance lookup
     return $DB->record_exists_sql(
         "SELECT 1
          FROM {codequiz_results} cr
@@ -97,7 +89,6 @@ function codequiz_get_completion_state($course, $cm, $userid, $type) {
     );
 }
 
-// Update de get_completion_rule_descriptions functie:
 function codequiz_get_completion_rule_descriptions($cm) {
     global $DB;
     $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
@@ -109,13 +100,9 @@ function codequiz_get_completion_rule_descriptions($cm) {
     return $descriptions;
 }
 
-/**
- * Controle of de regel geactiveerd is in het formulier.
- */
 function codequiz_completion_rule_enabled($data) {
     return !empty($data->completionpass);
 }
-
 
 function codequiz_get_coursemodule_info($coursemodule) {
     global $DB;
@@ -124,4 +111,31 @@ function codequiz_get_coursemodule_info($coursemodule) {
     $info = new cached_cm_info();
     $info->customcompletionrules = ['completionpass' => $instance->completionpass];
     return $info;
+}
+
+/**
+ * Sla de vragen op in de database.
+ */
+function codequiz_save_questions($quizid, $data) {
+    global $DB;
+
+    $DB->delete_records('codequiz_questions', ['codequizid' => $quizid]);
+
+    if (!empty($data->vraagtext)) {
+        foreach ($data->vraagtext as $index => $vraagtext) {
+            $mediahtml = $data->mediahtml[$index]['text'] ?? '';
+            $crop = isset($data->crop[$index]) ? (int)$data->crop[$index] : 1;
+            $optiesjson = $data->optiesjson[$index] ?? '[]';
+
+            $vraag = new stdClass();
+            $vraag->codequizid = $quizid;
+            $vraag->vraag = $vraagtext;
+            $vraag->mediahtml = $mediahtml;
+            $vraag->crop = $crop;
+            $vraag->opties = $optiesjson;
+            $vraag->sortorder = $index;
+
+            $DB->insert_record('codequiz_questions', $vraag);
+        }
+    }
 }
