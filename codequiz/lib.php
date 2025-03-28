@@ -67,17 +67,24 @@ function codequiz_get_result($instanceid, $userid) {
 function codequiz_get_completion_state($course, $cm, $userid, $type) {
     global $DB;
 
-    // 1. Check of de module de rule gebruikt
+    // Check of de completion rule actief is
     $instance = $DB->get_record('codequiz', ['id' => $cm->instance]);
-    if (empty($instance->completionpass)) {
-        return false;  // 🚨 Regel is niet geactiveerd
+    if (!$instance || empty($instance->completionpass)) {
+        return $type; // Geen custom rule actief, retourneer originele status
     }
 
-    // 2. Check of de gebruiker een resultaat heeft
-    return $DB->record_exists('codequiz_results', [
+    // Check of er een resultaat bestaat
+    $has_result = $DB->record_exists('codequiz_results', [
         'codequizid' => $cm->instance,
         'userid' => $userid
     ]);
+
+    // Voor COMPLETION_AND logica:
+    if ($type === COMPLETION_AND) {
+        return $has_result;
+    }
+    // Voor COMPLETION_OR (niet gebruikt in dit geval):
+    return $has_result || $type;
 }
 
 // Update de get_completion_rule_descriptions functie:
@@ -105,11 +112,6 @@ function codequiz_get_coursemodule_info($coursemodule) {
     $instance = $DB->get_record('codequiz', ['id' => $coursemodule->instance]);
 
     $info = new cached_cm_info();
-
-    // 🚨 Directe toewijzing aan customcompletionrules ipv customdata
-    if (!empty($instance->completionpass)) {
-        $info->customcompletionrules = ['completionpass' => 1];
-    }
-
+    $info->customcompletionrules = ['completionpass' => $instance->completionpass];
     return $info;
 }

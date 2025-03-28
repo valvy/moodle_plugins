@@ -25,25 +25,20 @@ class mod_codequiz_mod_form extends moodleform_mod {
         // Opslaan-knoppen
         $this->add_action_buttons();
     }
-
-   public function add_completion_rules() {
+  public function add_completion_rules() {
         $mform = $this->_form;
 
-        $mform->addElement('advcheckbox', 'completionpass',
-            get_string('completionpass', 'codequiz'),
-            get_string('completionpass_label', 'codequiz') // 🚨 Nieuwe taalstring
+        $mform->addElement('checkbox', 'completionpass',
+            get_string('completionpass_label', 'codequiz'),
+            get_string('completionpass', 'codequiz')
         );
-        $mform->setDefault('completionpass', 0);
         $mform->addHelpButton('completionpass', 'completionpass', 'codequiz');
 
-        // 🚨 Verplicht voor Moodle's completion handling
         return ['completionpass'];
     }
-    /**
-     * ✅ Moodle checkt hiermee of de regel actief is.
-     */
+
     public function completion_rule_enabled($data) {
-        return !empty($data->completionpass);
+        return !empty($data['completionpass']);
     }
 
     /**
