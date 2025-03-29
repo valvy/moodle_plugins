@@ -8,178 +8,196 @@ require_login($course, true, $cm);
 $PAGE->set_url('/mod/dashboard/view.php', ['id' => $id]);
 $PAGE->set_title($cm->name);
 $PAGE->set_heading($course->fullname);
-
-// Optional: laad CSS
 $PAGE->requires->css(new moodle_url('/mod/dashboard/style.css'));
 
 echo $OUTPUT->header();
 
 global $DB, $USER;
 
-// Haal dashboard instance op
-$instance = $DB->get_record('dashboard', ['id' => $cm->instance], '*', MUST_EXIST);
+// ✅ Filters
+$filter_harder = optional_param('filter_harder', 0, PARAM_BOOL);
+$filter_easier = optional_param('filter_easier', 0, PARAM_BOOL);
+$filter_open   = optional_param('filter_open', 0, PARAM_BOOL);
 
-// Welkomstbericht met naam
+// ✅ Welkomstbericht
+$instance = $DB->get_record('dashboard', ['id' => $cm->instance], '*', MUST_EXIST);
 $bericht = format_text($instance->welkomstbericht ?? '', FORMAT_HTML);
 $bericht = str_replace('{{naam}}', fullname($USER), $bericht);
-echo '<div class="welkomstbericht">' . $bericht . '</div>';
+echo html_writer::div($bericht, 'welkomstbericht');
 
-// ---------------------------------------------
-// Haal quizresultaten op en bepaal niveau
-// ---------------------------------------------
+// ✅ Bepaal studentniveau
 $niveau = null;
-
 if (!empty($instance->codequizid)) {
     $result = $DB->get_record('codequiz_results', [
         'codequizid' => $instance->codequizid,
         'userid' => $USER->id
     ]);
-
     $quiz = $DB->get_record('codequiz', ['id' => $instance->codequizid]);
 
     if ($result && $quiz) {
         $labels = array_map('trim', explode(',', $result->labels));
-
         if (count($labels) >= $quiz->threshold_expert) {
-            $niveau = 'Expert Developer';
-        } else if (count($labels) >= $quiz->threshold_skilled) {
-            $niveau = 'Skilled Developer';
+            $niveau = 'expert';
+        } elseif (count($labels) >= $quiz->threshold_skilled) {
+            $niveau = 'skilled';
         } else {
-            $niveau = 'Aspiring Developer';
+            $niveau = 'aspiring';
+        }
+        echo html_writer::div("Jouw niveau: <strong>" . ucfirst($niveau) . " developer</strong>", 'user-level');
+    }
+}
+
+if (!$niveau) {
+    echo html_writer::div('Geen quizresultaat beschikbaar.', 'user-level');
+    echo $OUTPUT->footer();
+    exit;
+}
+
+// ✅ Filterformulier
+echo html_writer::start_tag('form', ['method' => 'get', 'action' => $PAGE->url]);
+echo html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'id', 'value' => $id]);
+echo html_writer::start_div('dashboard-filters');
+
+$filters = [
+    'filter_harder' => ['Toon moeilijkere opdrachten', $filter_harder, !($niveau == 'expert')],
+    'filter_easier' => ['Toon makkelijkere opdrachten', $filter_easier, !($niveau == 'aspiring')],
+    'filter_open'   => ['Toon alleen niet-voltooide', $filter_open, true]
+];
+
+foreach ($filters as $name => [$label, $value, $show]) {
+    if ($show) {
+        echo html_writer::checkbox($name, 1, $value, $label);
+    }
+}
+
+echo html_writer::empty_tag('input', ['type' => 'submit', 'value' => 'Filteren']);
+echo html_writer::end_div();
+echo html_writer::end_tag('form');
+
+// ✅ Activiteiten ophalen
+$modinfo = get_fast_modinfo($course);
+$activiteiten = [];
+$niveauvolgorde = ['aspiring' => 1, 'skilled' => 2, 'expert' => 3];
+
+foreach ($modinfo->cms as $mod) {
+    if (!$mod->uservisible || (int)$mod->completion === 0 || $mod->modname === 'dashboard') continue;
+
+    $showaspiring = $showskilled = $showexpert = 0;
+    $applicatie = ucfirst($mod->modname);
+    $matchniveau = true;
+    $difficulty = 'normal';
+
+    if ($mod->modname === 'coder') {
+        $opdracht = $DB->get_record('coder', ['id' => $mod->instance], '*', IGNORE_MISSING);
+        if (!$opdracht) continue;
+
+        $showaspiring = (int)$opdracht->showaspiring;
+        $showskilled  = (int)$opdracht->showskilled;
+        $showexpert   = (int)$opdracht->showexpert;
+
+        $heeftlabels = $showaspiring || $showskilled || $showexpert;
+
+        $labelniveaus = [];
+        if ($showaspiring) $labelniveaus[] = 'aspiring';
+        if ($showskilled)  $labelniveaus[] = 'skilled';
+        if ($showexpert)   $labelniveaus[] = 'expert';
+
+        $matchniveau = in_array($niveau, $labelniveaus);
+
+        if ($heeftlabels && !$matchniveau) {
+            $studentlevel = $niveauvolgorde[$niveau];
+            $hoogste = max(array_map(fn($n) => $niveauvolgorde[$n], $labelniveaus));
+            $laagste = min(array_map(fn($n) => $niveauvolgorde[$n], $labelniveaus));
+
+            if ($hoogste > $studentlevel && !$filter_harder) continue;
+            if ($laagste < $studentlevel && !$filter_easier) continue;
+
+            $difficulty = ($hoogste > $studentlevel) ? 'harder' : 'easier';
+        } elseif (!$heeftlabels && !$instance->toonalles) {
+            continue;
         }
 
-        echo html_writer::div("Jouw niveau: <strong>$niveau</strong>", 'user-level');
+        $applicatie = $opdracht->applicatie_naam ?? $applicatie;
     } else {
-        echo html_writer::div('Geen resultaat gevonden voor de gekoppelde quiz.', 'user-level');
+        if (!$instance->toonalles) continue;
     }
+
+    $activiteiten[] = (object)[
+        'name' => $mod->name,
+        'cmid' => $mod->id,
+        'modname' => $mod->modname,
+        'applicatie' => $applicatie,
+        'matchniveau' => $matchniveau,
+        'difficulty' => $difficulty
+    ];
 }
 
-// ---------------------------------------------
-// Toon opdrachten van type 'coder' per niveau
-// ---------------------------------------------
-if (isset($niveau)) {
-    $visiblefield = '';
-    switch (strtolower($niveau)) {
-        case 'aspiring developer':
-            $visiblefield = 'showaspiring';
-            break;
-        case 'skilled developer':
-            $visiblefield = 'showskilled';
-            break;
-        case 'expert developer':
-            $visiblefield = 'showexpert';
-            break;
-    }
-
-    if ($visiblefield !== '') {
-        $coders = $DB->get_records('coder', ['course' => $course->id]);
-
-        $zichtbare_opdrachten = array_filter($coders, function($c) use ($visiblefield) {
-            return isset($c->$visiblefield) && $c->$visiblefield == 1;
-        });
-
-        echo html_writer::tag('h3', 'Beschikbare opdrachten voor jouw niveau:');
-
-        if (empty($zichtbare_opdrachten)) {
-            echo html_writer::div('Er zijn geen opdrachten beschikbaar voor jouw niveau.');
-        } else {
-            // ---------------------------------------------
-            // ✅ Progress bar
-            // ---------------------------------------------
-            $total = count($zichtbare_opdrachten);
-            $voltooid = 0;
-
-            foreach ($zichtbare_opdrachten as $opdracht) {
-                $moduleid = $DB->get_field('modules', 'id', ['name' => 'coder']);
-                $cmid = $DB->get_field('course_modules', 'id', [
-                    'instance' => $opdracht->id,
-                    'module' => $moduleid,
-                    'course' => $course->id
-                ]);
-
-                $completed = $DB->get_field('course_modules_completion', 'completionstate', [
-                    'coursemoduleid' => $cmid,
-                    'userid' => $USER->id
-                ]);
-
-                if ($completed == 1) {
-                    $voltooid++;
-                }
-            }
-
-            $percentage = $total > 0 ? round(($voltooid / $total) * 100) : 0;
-
-            echo html_writer::tag('h4', "Voortgang: $voltooid van $total opdrachten voltooid ($percentage%)");
-
-            // Dynamische kleur bepalen
-            $kleur = '#f44336'; // rood
-            if ($percentage >= 100) {
-                $kleur = '#4caf50'; // groen
-            } else if ($percentage >= 67) {
-                $kleur = '#ffeb3b'; // geel
-            } else if ($percentage >= 34) {
-                $kleur = '#ff9800'; // oranje
-            }
-
-            $progressbar = html_writer::div(
-                html_writer::div('&nbsp;', null, [
-                    'style' => "width: {$percentage}%; height: 20px; background-color: {$kleur}; border-radius: 3px;"
-                ]),
-                null,
-                [
-                    'style' => "width: 100%; background-color: #ddd; border-radius: 3px; margin-bottom: 20px; overflow: hidden;"
-                ]
-            );
-
-            echo $progressbar;
-
-            // ---------------------------------------------
-            // ✅ Opdrachten-tabel
-            // ---------------------------------------------
-            $table = new html_table();
-            $table->head = ['Naam', 'Applicatie', 'Inleverlink', 'Status'];
-            $table->attributes['class'] = 'generaltable mod-dashboard-table';
-            $table->headspan = [1, 1, 1, 1];
-            $table->colclasses = ['leftalign', 'leftalign', 'centeralign', 'centeralign'];
-            $table->data = [];
-
-            $rownum = 0;
-
-            foreach ($zichtbare_opdrachten as $opdracht) {
-                $moduleid = $DB->get_field('modules', 'id', ['name' => 'coder']);
-                $cmid = $DB->get_field('course_modules', 'id', [
-                    'instance' => $opdracht->id,
-                    'module' => $moduleid,
-                    'course' => $course->id
-                ]);
-
-                $completed = $DB->get_field('course_modules_completion', 'completionstate', [
-                    'coursemoduleid' => $cmid,
-                    'userid' => $USER->id
-                ]);
-
-                $statusicon = ($completed == 1)
-                    ? '<span style="color:green;">✅ Voltooid</span>'
-                    : '<span style="color:red;">❌ Niet voltooid</span>';
-
-                $row = new html_table_row([
-                    new html_table_cell(format_string($opdracht->name)),
-                    new html_table_cell(format_string($opdracht->applicatie_naam)),
-                    new html_table_cell(html_writer::link(
-                        new moodle_url('/mod/coder/view.php', ['id' => $cmid]),
-                        'Bekijk in Moodle',
-                        ['target' => '_blank']
-                    )),
-                    new html_table_cell($statusicon)
-                ]);
-
-                $row->attributes['class'] = ($rownum++ % 2 == 0) ? 'even' : 'odd';
-                $table->data[] = $row;
-            }
-
-            echo html_writer::table($table);
-        }
-    }
+// ✅ Voortgang
+$total = 0;
+$voltooid = 0;
+foreach ($activiteiten as $a) {
+    if (!$a->matchniveau) continue;
+    $completed = $DB->get_field('course_modules_completion', 'completionstate', [
+        'coursemoduleid' => $a->cmid,
+        'userid' => $USER->id
+    ]);
+    $total++;
+    if ($completed == 1) $voltooid++;
 }
+
+$percentage = $total > 0 ? round(($voltooid / $total) * 100) : 0;
+$kleur = '#f44336';
+if ($percentage >= 100) $kleur = '#4caf50';
+elseif ($percentage >= 67) $kleur = '#ffeb3b';
+elseif ($percentage >= 34) $kleur = '#ff9800';
+
+echo html_writer::tag('h4', "Voortgang: $voltooid van $total opdrachten voltooid ($percentage%)");
+echo html_writer::div(
+    html_writer::div('&nbsp;', null, [
+        'style' => "width: {$percentage}%; height: 20px; background-color: {$kleur}; border-radius: 3px;"
+    ]),
+    null,
+    ['style' => "width: 100%; background-color: #ddd; border-radius: 3px; margin-bottom: 20px; overflow: hidden;"]
+);
+
+// ✅ Cards layout
+echo html_writer::start_div('dashboard-cards', [
+    'style' => 'display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;'
+]);
+
+foreach ($activiteiten as $a) {
+    $completed = $DB->get_field('course_modules_completion', 'completionstate', [
+        'coursemoduleid' => $a->cmid,
+        'userid' => $USER->id
+    ]);
+
+    if ($filter_open && $completed == 1) continue;
+
+    switch ($a->difficulty) {
+        case 'harder': $kaartkleur = '#ffe6e6'; break;    // lichtrood
+        case 'easier': $kaartkleur = '#f5f5f5'; break;    // lichtgrijs
+        default:       $kaartkleur = '#ffffff'; break;
+    }
+
+    $statusicon = ($completed == 1) ? '✅' : '❌';
+    $statuskleur = ($completed == 1) ? 'green' : 'red';
+    $statustekst = ($completed == 1) ? 'Voltooid' : 'Niet voltooid';
+
+    $link = new moodle_url("/mod/{$a->modname}/view.php", ['id' => $a->cmid]);
+
+    $card = html_writer::start_div('dashboard-card', [
+        'style' => "border: 1px solid #ccc; border-radius: 8px; padding: 1rem; background-color: $kaartkleur; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);"
+    ]);
+
+    $card .= html_writer::tag('h4', format_string($a->name));
+    $card .= html_writer::div('📚 ' . format_string($a->applicatie), '', ['style' => 'margin-bottom: 0.5rem;']);
+    $card .= html_writer::div(html_writer::link($link, '🔗 Bekijk in Moodle'), '', ['style' => 'margin-bottom: 0.5rem;']);
+    $card .= html_writer::div("{$statusicon} <span style='color:{$statuskleur}; font-weight: bold;'>{$statustekst}</span>");
+
+    $card .= html_writer::end_div();
+    echo $card;
+}
+
+echo html_writer::end_div(); // cards
 
 echo $OUTPUT->footer();

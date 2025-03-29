@@ -12,7 +12,7 @@
 
                 <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true" COMMENT="Welcome message for user"/>
                 <FIELD NAME="outputexample" TYPE="text" NOTNULL="false" COMMENT="Example output for user"/>
-
+                <FIELD NAME="toonalles" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Toon opdrachten voor alle niveaus"/>
                 <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Linked CodeQuiz assignment ID"/>
 
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>

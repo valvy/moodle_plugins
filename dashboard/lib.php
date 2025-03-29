@@ -12,12 +12,14 @@ function dashboard_add_instance(stdClass $data, mod_dashboard_mod_form $mform = 
     global $DB;
     $data->timecreated = time();
     $data->timemodified = $data->timecreated;
+    $data->welkomstbericht = $data->welkomstbericht_editor['text'];
     return $DB->insert_record('dashboard', $data);
 }
 
 function dashboard_update_instance(stdClass $data, mod_dashboard_mod_form $mform = null) {
     global $DB;
     $data->timemodified = time();
+    $data->welkomstbericht = $data->welkomstbericht_editor['text'];
     $data->id = $data->instance;
     return $DB->update_record('dashboard', $data);
 }
