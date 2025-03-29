@@ -18,8 +18,11 @@ class mod_codequiz_mod_form extends moodleform_mod {
         // Introductie
         $this->standard_intro_elements();
 
-        // Thresholds (integers)
-        $mform->addElement('header', 'labelthresholds', 'Instellingen voor labels');
+        // Hoofdheader voor labels en berichten
+        $mform->addElement('header', 'labels_settings', 'Instellingen Labels');
+
+        // Subheader voor thresholds
+        $mform->addElement('static', 'label_vanaf', '', '<strong>Label vanaf</strong>');
 
         $mform->addElement('text', 'threshold_aspiring', 'Aspiring developer vanaf punten:', ['size' => 5]);
         $mform->setType('threshold_aspiring', PARAM_INT);
@@ -30,8 +33,8 @@ class mod_codequiz_mod_form extends moodleform_mod {
         $mform->addElement('text', 'threshold_expert', 'Expert developer vanaf punten:', ['size' => 5]);
         $mform->setType('threshold_expert', PARAM_INT);
 
-        // Berichten per niveau (HTML)
-        $mform->addElement('header', 'messagesheader', 'Berichten per niveau');
+        // Subheader voor berichten
+        $mform->addElement('static', 'label_berichten', '', '<strong>Berichten op eindschermen</strong>');
 
         $mform->addElement('editor', 'message_aspiring', 'Bericht voor Aspiring developer');
         $mform->setType('message_aspiring', PARAM_RAW);
@@ -41,6 +44,9 @@ class mod_codequiz_mod_form extends moodleform_mod {
 
         $mform->addElement('editor', 'message_expert', 'Bericht voor Expert developer');
         $mform->setType('message_expert', PARAM_RAW);
+
+        // Hoofdheader voor vragen
+        $mform->addElement('header', 'vragen_settings', 'Vragen');
 
         // Bepaal aantal vragen
         $vraagcount = 1;

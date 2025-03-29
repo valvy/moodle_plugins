@@ -53,7 +53,7 @@ $messages = [
 ];
 
 // Voornaam gebruiker ophalen
-$userfirstname = $USER->firstname;
+$userfirstname = ucfirst(strtolower($USER->firstname));
 
 echo $OUTPUT->header();
 
