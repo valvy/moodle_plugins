@@ -14,11 +14,14 @@ $PAGE->set_pagelayout('incourse');
 
 global $DB, $USER;
 $instance = $DB->get_record('codequiz', ['id' => $cm->instance], '*', MUST_EXIST);
+
+// Belangrijk: Haal hier het resultaat op uit de database
 $stored_result = codequiz_get_result($cm->instance, $USER->id);
 if ($stored_result) {
     $stored_result_data = [
         "labels" => json_decode($stored_result->labels, true),
-        "message" => $stored_result->message
+        "message" => $stored_result->message,
+        "answers" => json_decode($stored_result->answers, true)
     ];
 } else {
     $stored_result_data = null;
@@ -35,12 +38,22 @@ foreach ($questions as $q) {
     ];
 }
 
-// Voeg thresholds toe aan config
+// Thresholds ophalen (als integers)
 $labelthresholds = [
-    'aspiring' => $instance->threshold_aspiring,
-    'skilled' => $instance->threshold_skilled,
-    'expert' => $instance->threshold_expert
+    'aspiring' => (int)$instance->threshold_aspiring,
+    'skilled' => (int)$instance->threshold_skilled,
+    'expert' => (int)$instance->threshold_expert
 ];
+
+// Berichten ophalen
+$messages = [
+    'aspiring' => $instance->message_aspiring,
+    'skilled' => $instance->message_skilled,
+    'expert' => $instance->message_expert
+];
+
+// Voornaam gebruiker ophalen
+$userfirstname = $USER->firstname;
 
 echo $OUTPUT->header();
 
@@ -57,7 +70,9 @@ if (has_capability('mod/codequiz:managedashboard', $context)) {
     instanceid: <?php echo $cm->instance; ?>,
     storedResult: <?php echo json_encode($stored_result_data); ?>,
     vraagSchermen: <?php echo json_encode($vraagSchermen); ?>,
-    labelThresholds: <?php echo json_encode($labelthresholds); ?>
+    labelThresholds: <?php echo json_encode($labelthresholds); ?>,
+    messages: <?php echo json_encode($messages); ?>,
+    userFirstName: <?php echo json_encode($userfirstname); ?>
   };
 </script>
 

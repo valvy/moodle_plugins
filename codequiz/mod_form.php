@@ -18,7 +18,7 @@ class mod_codequiz_mod_form extends moodleform_mod {
         // Introductie
         $this->standard_intro_elements();
 
-        // Instellingen voor labels
+        // Thresholds (integers)
         $mform->addElement('header', 'labelthresholds', 'Instellingen voor labels');
 
         $mform->addElement('text', 'threshold_aspiring', 'Aspiring developer vanaf punten:', ['size' => 5]);
@@ -30,8 +30,20 @@ class mod_codequiz_mod_form extends moodleform_mod {
         $mform->addElement('text', 'threshold_expert', 'Expert developer vanaf punten:', ['size' => 5]);
         $mform->setType('threshold_expert', PARAM_INT);
 
+        // Berichten per niveau (HTML)
+        $mform->addElement('header', 'messagesheader', 'Berichten per niveau');
+
+        $mform->addElement('editor', 'message_aspiring', 'Bericht voor Aspiring developer');
+        $mform->setType('message_aspiring', PARAM_RAW);
+
+        $mform->addElement('editor', 'message_skilled', 'Bericht voor Skilled developer');
+        $mform->setType('message_skilled', PARAM_RAW);
+
+        $mform->addElement('editor', 'message_expert', 'Bericht voor Expert developer');
+        $mform->setType('message_expert', PARAM_RAW);
+
         // Bepaal aantal vragen
-        $vraagcount = 1; // standaardwaarde
+        $vraagcount = 1;
         if ($this->current && !empty($this->current->id)) {
             $vraagcount = $DB->count_records('codequiz_questions', ['codequizid' => $this->current->id]);
             $vraagcount = $vraagcount > 0 ? $vraagcount : 1;
@@ -100,45 +112,29 @@ class mod_codequiz_mod_form extends moodleform_mod {
             $defaultvalues['threshold_aspiring'] = $instance->threshold_aspiring;
             $defaultvalues['threshold_skilled'] = $instance->threshold_skilled;
             $defaultvalues['threshold_expert'] = $instance->threshold_expert;
+
+            $defaultvalues['message_aspiring'] = ['text' => $instance->message_aspiring, 'format' => FORMAT_HTML];
+            $defaultvalues['message_skilled'] = ['text' => $instance->message_skilled, 'format' => FORMAT_HTML];
+            $defaultvalues['message_expert'] = ['text' => $instance->message_expert, 'format' => FORMAT_HTML];
+
             $defaultvalues['completionpass'] = $instance->completionpass;
 
             $questions = $DB->get_records('codequiz_questions', ['codequizid' => $this->current->id], 'sortorder ASC');
 
-            $vraagtext = [];
-            $mediahtml = [];
-            $mediaupload = [];
-            $crop = [];
-            $optiesjson = [];
-
             $i = 0;
             foreach ($questions as $question) {
-                $vraagtext[$i] = $question->vraag ?? '';
-                $mediahtml[$i] = [
-                    'text' => $question->mediahtml ?? '',
-                    'format' => FORMAT_HTML
-                ];
-                $crop[$i] = isset($question->crop) ? (int)$question->crop : 1;
-                $optiesjson[$i] = $question->opties;
+                $defaultvalues['vraagtext'][$i] = $question->vraag;
+                $defaultvalues['mediahtml'][$i] = ['text' => $question->mediahtml, 'format' => FORMAT_HTML];
+                $defaultvalues['crop'][$i] = $question->crop;
+                $defaultvalues['optiesjson'][$i] = $question->opties;
 
                 $draftid = file_get_submitted_draft_itemid("mediaupload[{$i}]");
-                file_prepare_draft_area(
-                    $draftid,
-                    $this->context->id,
-                    'mod_codequiz',
-                    'mediaupload',
-                    $this->current->id * 100 + $i
-                );
-                $mediaupload[$i] = $draftid;
-
+                file_prepare_draft_area($draftid, $this->context->id, 'mod_codequiz', 'mediaupload', $this->current->id * 100 + $i);
+                $defaultvalues['mediaupload'][$i] = $draftid;
                 $i++;
             }
 
             $defaultvalues['vragen_repeats'] = $i;
-            $defaultvalues['vraagtext'] = $vraagtext;
-            $defaultvalues['mediahtml'] = $mediahtml;
-            $defaultvalues['crop'] = $crop;
-            $defaultvalues['optiesjson'] = $optiesjson;
-            $defaultvalues['mediaupload'] = $mediaupload;
         }
     }
 }

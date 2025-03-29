@@ -1,6 +1,4 @@
 <?php
-// ===== ./mod/codequiz/lib.php =====
-
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -11,7 +9,7 @@ function codequiz_supports($feature) {
         case FEATURE_MOD_INTRO: return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
         case FEATURE_COMPLETION_HAS_RULES: return true;
-        case FEATURE_GRADE_HAS_GRADE: return false; // Geen cijfers
+        case FEATURE_GRADE_HAS_GRADE: return false;
         default: return null;
     }
 }
@@ -25,35 +23,47 @@ function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = nu
     $data->timecreated = time();
     $data->timemodified = $data->timecreated;
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
-    $data->coursemodule = $data->coursemodule ?? 0;
 
-    // Opslaan thresholds
+    // Thresholds als integers
     $data->threshold_aspiring = isset($data->threshold_aspiring) ? (int)$data->threshold_aspiring : 0;
     $data->threshold_skilled = isset($data->threshold_skilled) ? (int)$data->threshold_skilled : 3;
     $data->threshold_expert = isset($data->threshold_expert) ? (int)$data->threshold_expert : 6;
+
+    // Berichten per niveau (editorvelden verwerken)
+    $data->message_aspiring = $data->message_aspiring['text'] ?? '';
+    $data->message_skilled = $data->message_skilled['text'] ?? '';
+    $data->message_expert = $data->message_expert['text'] ?? '';
 
     $id = $DB->insert_record('codequiz', $data);
     codequiz_save_questions($id, $data);
     return $id;
 }
 
+/**
+ * Update bestaande instantie.
+ */
 function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
     $data->timemodified = time();
     $data->id = $data->instance;
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
-    $data->coursemodule = $data->coursemodule ?? 0;
 
-    // Update thresholds
+    // Thresholds als integers
     $data->threshold_aspiring = isset($data->threshold_aspiring) ? (int)$data->threshold_aspiring : 0;
     $data->threshold_skilled = isset($data->threshold_skilled) ? (int)$data->threshold_skilled : 3;
     $data->threshold_expert = isset($data->threshold_expert) ? (int)$data->threshold_expert : 6;
+
+    // Berichten per niveau (editorvelden verwerken)
+    $data->message_aspiring = $data->message_aspiring['text'] ?? '';
+    $data->message_skilled = $data->message_skilled['text'] ?? '';
+    $data->message_expert = $data->message_expert['text'] ?? '';
 
     $DB->update_record('codequiz', $data);
     codequiz_save_questions($data->id, $data);
     return true;
 }
+
 /**
  * Verwijder een codequiz-instantie.
  */
@@ -185,6 +195,7 @@ function codequiz_save_questions($quizid, $data) {
         }
     }
 }
+
 
 /**
  * Bestandsserver: pluginfile handler voor mediaupload.

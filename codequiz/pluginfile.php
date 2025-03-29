@@ -1,45 +1,16 @@
-<?php
-// ===== ./mod/codequiz/pluginfile.php =====
-defined('MOODLE_INTERNAL') || die();
-
 require_once(__DIR__ . '/../../config.php');
-require_login();
+require_once($CFG->dirroot . '/mod/codequiz/lib.php');
 
-function codequiz_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
-    global $DB;
+$contextid = required_param('contextid', PARAM_INT);
+$filearea = required_param('filearea', PARAM_ALPHAEXT);
+$itemid = required_param('itemid', PARAM_INT);
+$filepath = required_param('filepath', PARAM_PATH);
+$filename = required_param('filename', PARAM_FILE);
 
-    if ($context->contextlevel != CONTEXT_MODULE) {
-        return false;
-    }
+$context = context::instance_by_id($contextid);
+$cm = get_coursemodule_from_id('codequiz', $context->instanceid, 0, false, MUST_EXIST);
+$course = get_course($cm->course);
 
-    // Controleer of de gebruiker toegang heeft
-    require_course_login($course, true, $cm);
+require_login($course, true, $cm);
 
-    if (!has_capability('mod/codequiz:view', $context)) {
-        return false;
-    }
-
-    // Alleen bestanden in 'mediaupload' worden geserveerd
-    if ($filearea !== 'mediaupload') {
-        return false;
-    }
-
-    // Parameters uit de $args array
-    // args = [itemid, [path1, path2, ...,] filename]
-    $itemid = array_shift($args);
-    $filepath = '/';
-    $filename = array_pop($args);
-    if (!empty($args)) {
-        $filepath .= implode('/', $args) . '/';
-    }
-
-    $fs = get_file_storage();
-    $file = $fs->get_file($context->id, 'mod_codequiz', $filearea, $itemid, $filepath, $filename);
-
-    if (!$file || $file->is_directory()) {
-        return false;
-    }
-
-    // Lever bestand op
-    send_stored_file($file, 0, 0, $forcedownload, $options);
-}
+codequiz_pluginfile($course, $cm, $context, $filearea, [$itemid, trim($filepath, '/'), $filename], false);

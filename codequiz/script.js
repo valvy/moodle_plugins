@@ -15,7 +15,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const navButtons = document.querySelector(".nav-buttons");
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
-
+  if (config.storedResult) {
+    renderFinalScreen(config.storedResult.labels, config.storedResult.message);
+    return;
+  }
   const screens = [];
   let currentScreen = 0;
   const answers = [];
@@ -115,65 +118,40 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function finishQuiz() {
-  if (answers.length < schermen.length || answers.includes(undefined)) {
-    console.error("Niet alle vragen zijn beantwoord.");
-    return;
+    if (answers.length < schermen.length || answers.includes(undefined)) {
+      console.error("Niet alle vragen zijn beantwoord.");
+      return;
+    }
+
+    const total = answers.reduce((a, b) => a + b, 0);
+    const thresholds = config.labelThresholds;
+    let level, message;
+
+    if (total >= parseInt(thresholds.expert)) {
+      level = "expert";
+    } else if (total >= parseInt(thresholds.skilled)) {
+      level = "skilled";
+    } else {
+      level = "aspiring";
+    }
+
+    message = config.messages[level].replace(/{{naam}}/g, config.userFirstName);
+    const resultData = { labels: [level + " developer"], message, answers };
+
+    saveResultToDB(resultData).then(() => {
+      renderFinalScreen(resultData.labels, message);
+    });
   }
-
-  const total = answers.reduce((a, b) => a + b, 0);
-  const labels = [];
-  let message = "";
-
-  const thresholds = window.codequizConfig.labelThresholds;
-
-  if (total >= thresholds.expert) {
-    labels.push("expert developer");
-    message = "Je bent een expert developer. Ga aan de slag met de moeilijkste opdrachten.";
-  } else if (total >= thresholds.skilled) {
-    labels.push("skilled developer");
-    message = "Je bent een skilled developer. Kies gemiddeld moeilijke opdrachten.";
-  } else if (total >= thresholds.aspiring) {
-    labels.push("aspiring developer");
-    message = "Je bent een aspiring developer. Begin met de basistaken.";
-  }
-
-  // Stuur nu ook antwoorden mee
-  const resultData = { labels, message, answers };
-
-  saveResultToDB(resultData).then(() => {
-    renderFinalScreen(labels, message);
-  });
-}
-
 
   function renderFinalScreen(labels, message) {
     navButtons.remove();
 
     container.innerHTML = `
-      <canvas id="matrix"></canvas>
       <div class="final-content">
         <h2>Aanbeveling</h2>
-        <p id="result-text"></p>
-        <div id="labels-container"></div>
         <p id="final-message">${message}</p>
         <button id="resetBtn">Opnieuw maken</button>
       </div>`;
-
-    const labelContainer = document.getElementById("labels-container");
-    labels.forEach(label => {
-      const span = document.createElement("span");
-      span.textContent = label;
-      span.style.backgroundColor = label.includes("expert") ? "red" : label.includes("skilled") ? "green" : "blue";
-      span.style.color = "white";
-      span.style.padding = "5px 10px";
-      span.style.marginRight = "5px";
-      span.style.borderRadius = "5px";
-      labelContainer.appendChild(span);
-    });
-
-    document.getElementById("result-text").textContent = labels.length === 1
-      ? "Uit de test blijkt dat de opdrachten met de volgende label het best bij je past:"
-      : "Uit de test blijkt dat de opdrachten met de volgende labels het best bij je passen:";
 
     document.getElementById("resetBtn").addEventListener("click", () => {
       fetch("delete_result.php", {
@@ -183,19 +161,21 @@ document.addEventListener("DOMContentLoaded", function () {
           courseid: config.courseid,
           instanceid: config.instanceid
         })
-      }).then(res => res.json()).then(data => {
+      })
+      .then(res => res.json())
+      .then(data => {
         if (data.status === 'success') {
           location.reload();
         } else {
           alert("Kon resultaat niet wissen.");
         }
-      }).catch(err => {
+      })
+      .catch(err => {
         console.error("Fout bij resetten:", err);
       });
     });
+}
 
-    startMatrix();
-  }
 
   function saveResultToDB(resultData) {
     return fetch('submit_result.php', {
@@ -206,54 +186,10 @@ document.addEventListener("DOMContentLoaded", function () {
         instanceid: config.instanceid,
         labels: JSON.stringify(resultData.labels),
         message: resultData.message,
-        answers: JSON.stringify(resultData.answers) // Nieuw toegevoegd
+        answers: JSON.stringify(resultData.answers)
       })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (!data || data.status !== 'success') {
-          console.error('Fout bij opslaan:', data);
-        } else {
-          console.log('Resultaat opgeslagen:', data);
-        }
-      })
-      .catch(error => {
-        console.error('Netwerkfout bij opslaan van resultaat:', error);
-      });
-  }
-
-  function startMatrix() {
-    const canvas = document.getElementById("matrix");
-    const ctx = canvas.getContext("2d");
-    canvas.width = container.offsetWidth;
-    canvas.height = container.offsetHeight;
-    const words = ["print", "python", "for", "if", "class", "input", "import", "return"];
-    const fontSize = 16;
-    const columnWidth = 45;
-    const columns = Math.floor(canvas.width / columnWidth);
-    const drops = Array.from({ length: columns }, () => Math.floor(Math.random() * canvas.height / fontSize));
-
-    function draw() {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#0F0";
-      ctx.font = fontSize + "px monospace";
-      for (let i = 0; i < drops.length; i++) {
-        const text = words[Math.floor(Math.random() * words.length)];
-        ctx.fillText(text, i * columnWidth, drops[i] * fontSize);
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    }
-
-    setInterval(draw, 66);
+    }).then(res => res.json());
   }
 
   updateNavButtons();
-
-  if (config.storedResult) {
-    renderFinalScreen(config.storedResult.labels, config.storedResult.message);
-  }
 });
