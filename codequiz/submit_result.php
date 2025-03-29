@@ -2,13 +2,14 @@
 require_once('../../config.php');
 require_login();
 
-global $DB, $USER;
+global $DB, $USER, $CFG;
 
 // Verkrijg de parameters uit de POST-request.
 $courseid   = required_param('courseid', PARAM_INT);
 $instanceid = required_param('instanceid', PARAM_INT);
-$labels     = required_param('labels', PARAM_RAW);  // Verwacht een JSON-string
+$labels     = required_param('labels', PARAM_RAW);    // Verwacht een JSON-string
 $message    = required_param('message', PARAM_TEXT);
+$answers    = required_param('answers', PARAM_RAW);   // Nieuw: JSON-string met antwoorden
 
 // Bouw het record dat in de database komt.
 $record = new stdClass();
@@ -17,6 +18,7 @@ $record->courseid    = $courseid;
 $record->userid      = $USER->id;
 $record->labels      = $labels;
 $record->message     = $message;
+$record->answers     = $answers; // Nieuw veld
 $record->timecreated = time();
 
 // Sla het resultaat op in de tabel.

@@ -1,43 +1,4 @@
 
-==== codequiz/delete_result.php ====
-<?php
-require_once('../../config.php');
-require_login();
-
-global $DB, $USER, $CFG;
-
-$courseid = required_param('courseid', PARAM_INT);
-$instanceid = required_param('instanceid', PARAM_INT);
-
-// Verwijder resultaten
-$DB->delete_records('codequiz_results', [
-    'codequizid' => $instanceid,
-    'userid' => $USER->id,
-    'courseid' => $courseid
-]);
-
-// Directe completion reset
-require_once($CFG->libdir.'/completionlib.php');
-
-if ($cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid)) {
-    $completion = new completion_info(get_course($courseid));
-
-    // Forceer reset van de status
-    $completion->delete_all_state($cm, $USER->id);
-
-    // Alternative: Directe database update
-    $DB->delete_records('course_modules_completion', [
-        'coursemoduleid' => $cm->id,
-        'userid' => $USER->id
-    ]);
-}
-
-// Cache leegmaken
-purge_all_caches();
-
-echo json_encode(['status' => 'success']);
-
-
 ==== codequiz/submit_result.php ====
 <?php
 require_once('../../config.php');
@@ -348,142 +309,463 @@ function codequiz_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
 
 
 
-==== codequiz/mod_form.php ====
-<?php
-defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot . '/course/moodleform_mod.php');
-require_once($CFG->libdir . '/filelib.php');
-
-class mod_codequiz_mod_form extends moodleform_mod {
-    public function definition() {
-        $mform = $this->_form;
-
-        // Activiteitsnaam
-        $mform->addElement('text', 'name', get_string('name'), ['size' => '64']);
-        $mform->setType('name', PARAM_TEXT);
-        $mform->addRule('name', null, 'required', null, 'client');
-
-        // Introductie
-        $this->standard_intro_elements();
-
-        // Herhaalbare vragen
-        $repeatarray = [];
-
-        $repeatarray[] = $mform->createElement('text', 'vraagtext', 'Vraagtekst');
-
-        // Filemanager
-        $repeatarray[] = $mform->createElement('filemanager', 'mediaupload', 'Afbeelding (upload)', null, [
-            'subdirs' => 0,
-            'maxbytes' => 10485760,
-            'maxfiles' => 1,
-            'accepted_types' => ['image'],
-            'return_types' => FILE_INTERNAL
-        ]);
-
-        $repeatarray[] = $mform->createElement('editor', 'mediahtml', 'Media (HTML, optioneel)');
-        $repeatarray[] = $mform->createElement('selectyesno', 'crop', 'Media croppen?');
-        $repeatarray[] = $mform->createElement('textarea', 'optiesjson', 'Opties (JSON)');
-
-        $repeatno = 1;
-        $repeateloptions = [
-            'vraagtext' => ['type' => PARAM_TEXT, 'default' => 'Vul hier je vraag in...'],
-            'mediahtml' => ['type' => PARAM_RAW, 'default' => ['text' => '<img src="https://example.com/voorbeeld.jpg" alt="Voorbeeld">', 'format' => FORMAT_HTML]],
-            'crop' => ['default' => 1],
-            'optiesjson' => ['type' => PARAM_RAW, 'default' => json_encode([
-                ['text' => 'Ja', 'value' => 1],
-                ['text' => 'Nee', 'value' => 0]
-            ], JSON_PRETTY_PRINT)],
-        ];
-
-        $this->repeat_elements($repeatarray, $repeatno, $repeateloptions, 'vragen_repeats', 'vragen_add_fields', 1, null, true);
-
-        $this->standard_coursemodule_elements();
-        $this->add_completion_rules();
-        $this->add_action_buttons();
-    }
-
-    public function add_completion_rules() {
-        $mform = $this->_form;
-
-        $mform->addElement('checkbox', 'completionpass',
-            get_string('completionpass_label', 'codequiz'),
-            get_string('completionpass', 'codequiz')
-        );
-        $mform->addHelpButton('completionpass', 'completionpass', 'codequiz');
-
-        return ['completionpass'];
-    }
-
-    public function completion_rule_enabled($data) {
-        return !empty($data['completionpass']);
-    }
-
-    public function get_completion_rule_descriptions() {
-        return [
-            'completionpass' => get_string('completionpass', 'codequiz')
-        ];
-    }
-
-    public function get_data() {
-        $data = parent::get_data();
-        if ($data) {
-            $data->completionpass = !empty($data->completionpass) ? 1 : 0;
-        }
-        return $data;
-    }
-
-    public function data_preprocessing(&$defaultvalues) {
-        global $DB;
-
-        parent::data_preprocessing($defaultvalues);
-        $defaultvalues['completionpass'] = $this->get_current_completionpass();
-
-        $context = $this->context;
-
-        if (!empty($defaultvalues['vraagtext'])) {
-            foreach ($defaultvalues['vraagtext'] as $i => $vraag) {
-                $draftid = file_get_submitted_draft_itemid("mediaupload[$i]");
-                file_prepare_draft_area(
-                    $draftid,
-                    $context->id,
-                    'mod_codequiz',
-                    'mediaupload',
-                    $this->current->id * 100 + $i,
-                    [
-                        'subdirs' => 0,
-                        'maxbytes' => 10485760,
-                        'maxfiles' => 1,
-                        'accepted_types' => ['image'],
-                        'return_types' => FILE_INTERNAL
-                    ]
-                );
-                $defaultvalues["mediaupload[$i]"] = $draftid;
-            }
-        }
-    }
-
-    private function get_current_completionpass() {
-        global $DB;
-
-        if ($this->current && $this->current->id) {
-            return $DB->get_field('codequiz', 'completionpass', ['id' => $this->current->id]);
-        }
-        return 0;
-    }
+==== codequiz/script.js ====
+class Scherm {
+  constructor(vraag, mediaHTML, opties, crop = true) {
+    this.vraag = vraag;
+    this.mediaHTML = mediaHTML;
+    this.opties = opties;
+    this.crop = crop;
+  }
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+  const config = window.codequizConfig;
+  const schermen = config.vraagSchermen.map(v => new Scherm(v.vraag, v.mediaHTML, v.opties, v.crop));
+
+  const container = document.getElementById("quiz-container");
+  const navButtons = document.querySelector(".nav-buttons");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+
+  const screens = [];
+  let currentScreen = 0;
+  const answers = [];
+
+  schermen.forEach((scherm, index) => {
+    const screen = document.createElement("div");
+    screen.classList.add("screen");
+    if (index === 0) screen.classList.add("active");
+
+    const wrapper = document.createElement("div");
+    wrapper.classList.add("content-wrapper");
+
+    const vraagDiv = document.createElement("div");
+    vraagDiv.classList.add("question-container");
+    vraagDiv.innerHTML = `<h2>Vraag ${index + 1}</h2><p>${scherm.vraag}</p>`;
+
+    let optiesHTML = '<div class="options-container">';
+    scherm.opties.forEach(optie => {
+      optiesHTML += `
+        <div class="option">
+          <input type="radio" id="q${index}-opt${optie.value}" name="vraag${index}" value="${optie.value}">
+          <label for="q${index}-opt${optie.value}">${optie.text}</label>
+        </div>`;
+    });
+    optiesHTML += '</div>';
+    vraagDiv.innerHTML += optiesHTML;
+
+    const mediaDiv = document.createElement("div");
+    mediaDiv.classList.add("media-container");
+    if (!scherm.crop) mediaDiv.classList.add("no-crop");
+    mediaDiv.innerHTML = scherm.mediaHTML;
+
+    wrapper.appendChild(vraagDiv);
+    wrapper.appendChild(mediaDiv);
+    screen.appendChild(wrapper);
+    container.insertBefore(screen, navButtons);
+    screens.push(screen);
+  });
+
+  function showScreen(index, direction = 'next') {
+    const outgoing = screens[currentScreen];
+    const incoming = screens[index];
+
+    // Zet beginpositie voor inkomend scherm
+    incoming.style.transition = "none";
+    incoming.style.transform = direction === 'next' ? "translateX(100%)" : "translateX(-100%)";
+    incoming.style.opacity = "0";
+    incoming.style.display = "block";
+
+    requestAnimationFrame(() => {
+      // Start animatie
+      incoming.style.transition = "transform 0.4s ease, opacity 0.4s ease";
+      outgoing.style.transition = "transform 0.4s ease, opacity 0.4s ease";
+
+      incoming.classList.add("active");
+      incoming.style.transform = "translateX(0)";
+      incoming.style.opacity = "1";
+
+      outgoing.style.transform = direction === 'next' ? "translateX(-100%)" : "translateX(100%)";
+      outgoing.style.opacity = "0";
+
+      setTimeout(() => {
+        outgoing.classList.remove("active");
+        outgoing.style.display = "none";
+        outgoing.style.transform = "translateX(100%)";
+      }, 400);
+    });
+
+    currentScreen = index;
+  }
+
+  function updateNavButtons() {
+    prevBtn.style.display = currentScreen === 0 ? "none" : "inline-block";
+    nextBtn.disabled = !document.querySelector(`input[name="vraag${currentScreen}"]:checked`);
+    nextBtn.textContent = currentScreen === screens.length - 1 ? "Afronden" : "Volgende";
+  }
+
+  document.addEventListener("change", () => updateNavButtons());
+
+  nextBtn.addEventListener("click", () => {
+    const selected = document.querySelector(`input[name="vraag${currentScreen}"]:checked`);
+    if (!selected) return;
+
+    answers[currentScreen] = parseInt(selected.value);
+
+    if (currentScreen < screens.length - 1) {
+      showScreen(currentScreen + 1, 'next');
+      updateNavButtons();
+    } else {
+      finishQuiz();
+    }
+  });
+
+  prevBtn.addEventListener("click", () => {
+    if (currentScreen > 0) {
+      showScreen(currentScreen - 1, 'prev');
+      updateNavButtons();
+    }
+  });
+
+  function finishQuiz() {
+    if (answers.length < schermen.length || answers.includes(undefined)) {
+      console.error("Niet alle vragen zijn beantwoord.");
+      return;
+    }
+
+    const total = answers.reduce((a, b) => a + b, 0);
+    const labels = [];
+    let message = "";
+
+    if (total > 5) {
+      labels.push("expert developer");
+      message = "Je bent een expert developer. Ga aan de slag met de moeilijkste opdrachten.";
+    } else if (total >= 3) {
+      labels.push("skilled developer");
+      message = "Je bent een skilled developer. Kies gemiddeld moeilijke opdrachten.";
+    } else {
+      labels.push("aspiring developer");
+      message = "Je bent een aspiring developer. Begin met de basistaken.";
+    }
+
+    const resultData = { labels, message };
+
+    saveResultToDB(resultData).then(() => {
+      renderFinalScreen(labels, message);
+    });
+  }
+
+  function renderFinalScreen(labels, message) {
+    navButtons.remove();
+
+    container.innerHTML = `
+      <canvas id="matrix"></canvas>
+      <div class="final-content">
+        <h2>Aanbeveling</h2>
+        <p id="result-text"></p>
+        <div id="labels-container"></div>
+        <p id="final-message">${message}</p>
+        <button id="resetBtn">Opnieuw maken</button>
+      </div>`;
+
+    const labelContainer = document.getElementById("labels-container");
+    labels.forEach(label => {
+      const span = document.createElement("span");
+      span.textContent = label;
+      span.style.backgroundColor = label.includes("expert") ? "red" : label.includes("skilled") ? "green" : "blue";
+      span.style.color = "white";
+      span.style.padding = "5px 10px";
+      span.style.marginRight = "5px";
+      span.style.borderRadius = "5px";
+      labelContainer.appendChild(span);
+    });
+
+    document.getElementById("result-text").textContent = labels.length === 1
+      ? "Uit de test blijkt dat de opdrachten met de volgende label het best bij je past:"
+      : "Uit de test blijkt dat de opdrachten met de volgende labels het best bij je passen:";
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      fetch("delete_result.php", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          courseid: config.courseid,
+          instanceid: config.instanceid
+        })
+      }).then(res => res.json()).then(data => {
+        if (data.status === 'success') {
+          location.reload();
+        } else {
+          alert("Kon resultaat niet wissen.");
+        }
+      }).catch(err => {
+        console.error("Fout bij resetten:", err);
+      });
+    });
+
+    startMatrix();
+  }
+
+  function saveResultToDB(resultData) {
+    return fetch('submit_result.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        courseid: config.courseid,
+        instanceid: config.instanceid,
+        labels: JSON.stringify(resultData.labels),
+        message: resultData.message
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data || data.status !== 'success') {
+          console.error('Fout bij opslaan:', data);
+        } else {
+          console.log('Resultaat opgeslagen:', data);
+        }
+      })
+      .catch(error => {
+        console.error('Netwerkfout bij opslaan van resultaat:', error);
+      });
+  }
+
+  function startMatrix() {
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+    canvas.width = container.offsetWidth;
+    canvas.height = container.offsetHeight;
+    const words = ["print", "python", "for", "if", "class", "input", "import", "return"];
+    const fontSize = 16;
+    const columnWidth = 45;
+    const columns = Math.floor(canvas.width / columnWidth);
+    const drops = Array.from({ length: columns }, () => Math.floor(Math.random() * canvas.height / fontSize));
+
+    function draw() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#0F0";
+      ctx.font = fontSize + "px monospace";
+      for (let i = 0; i < drops.length; i++) {
+        const text = words[Math.floor(Math.random() * words.length)];
+        ctx.fillText(text, i * columnWidth, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+
+    setInterval(draw, 66);
+  }
+
+  updateNavButtons();
+
+  if (config.storedResult) {
+    renderFinalScreen(config.storedResult.labels, config.storedResult.message);
+  }
+});
 
 
-==== codequiz/version.php ====
-<?php
-defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_codequiz';
-$plugin->version   = 2024032470;
-$plugin->requires  = 2022112800; // minimaal Moodle 4.x
-$plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = 'v1.0';
+==== codequiz/styles.css ====
+.codequiz-wrapper {
+  background-color: #111;
+  color: #e0e0e0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  padding: 20px;
+  border-radius: 5px;
+  margin: 20px auto;
+  max-width: 1200px;
+  position: relative;
+  z-index: 1;
+}
 
+#quiz-container {
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+.content-wrapper {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-wrap: wrap;
+}
+
+.question-container {
+  width: 50%;
+  padding: 20px;
+  box-sizing: border-box;
+  padding-top: 10vh;
+}
+
+.media-container {
+  width: 50%;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.media-container img,
+.media-container iframe {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.media-container.no-crop img {
+  object-fit: contain;
+  height: auto;
+  max-height: 100%;
+  width: auto;
+}
+
+.options-container {
+  margin-top: 20px;
+}
+
+.option {
+  margin-bottom: 10px;
+}
+
+.nav-buttons {
+  text-align: center;
+  margin-top: 30px;
+}
+
+.nav-buttons button {
+  background-color: #333;
+  color: #e0e0e0;
+  border: none;
+  padding: 10px 20px;
+  margin: 0 10px;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background-color 0.3s;
+  border-radius: 6px;
+}
+
+.nav-buttons button:hover:not(:disabled) {
+  background-color: #555;
+}
+
+.nav-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.final-content {
+  background: #000;
+  color: #0f0;
+  font-family: monospace;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 50px auto;
+}
+
+#matrix {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  background: black;
+  pointer-events: none;
+  border-radius: 10px;
+}
+
+#labels-container span {
+  display: inline-block;
+  margin: 5px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+button {
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 16px;
+  padding: 10px 20px;
+  background-color: #0f0;
+  color: #000;
+  border: none;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+button:hover {
+  background-color: #6f6;
+}
+
+/* === Slide transitions === */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  opacity: 0;
+  transform: translateX(100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.screen.active {
+  opacity: 1;
+  transform: translateX(0);
+  z-index: 1;
+  pointer-events: auto;
+}
+#quiz-container {
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+/* Slide-animatie voor quizschermen */
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+  opacity: 0;
+  transform: translateX(100%);
+  z-index: 0;
+  pointer-events: none;
+  height: 100%;
+}
+
+.screen.active {
+  opacity: 1;
+  transform: translateX(0);
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Zet navigatieknoppen onderin het quizgedeelte */
+.nav-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+}
 
 
 ==== codequiz/view.php ====
@@ -526,6 +808,13 @@ foreach ($questions as $q) {
 }
 
 echo $OUTPUT->header();
+
+// Voeg een dashboard navigatielink toe voor gebruikers met de juiste capability
+$context = context_module::instance($cm->id);
+if (has_capability('mod/codequiz:managedashboard', $context)) {
+    $dashboardurl = new moodle_url('/mod/codequiz/dashboard.php', ['courseid' => $course->id, 'instanceid' => $cm->instance]);
+    echo html_writer::tag('div', html_writer::link($dashboardurl, get_string('dashboard', 'codequiz'), ['class' => 'dashboard-link']), ['style' => 'margin-bottom: 20px;']);
+}
 ?>
 
 <script>
@@ -548,12 +837,404 @@ echo $OUTPUT->header();
   </div>
 </div>
 
-
 <script src="script.js"></script>
 
 <?php
 echo $OUTPUT->footer();
 
+
+
+==== codequiz/dashboard.php ====
+<?php
+require_once('../../config.php');
+
+$courseid   = required_param('courseid', PARAM_INT);
+$instanceid = required_param('instanceid', PARAM_INT);
+
+if (!$cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid)) {
+    print_error('invalidcoursemodule');
+}
+$course = get_course($courseid);
+require_login($course, true, $cm);
+
+$context = context_module::instance($cm->id);
+require_capability('mod/codequiz:managedashboard', $context);
+
+$PAGE->set_url('/mod/codequiz/dashboard.php', ['courseid' => $courseid, 'instanceid' => $instanceid]);
+$PAGE->set_title('Code Quiz Dashboard');
+$PAGE->set_heading($course->fullname);
+$PAGE->set_pagelayout('incourse');
+
+// Haal alle resultaten op voor deze codequiz
+$results = $DB->get_records('codequiz_results', ['codequizid' => $instanceid]);
+$totalSubmissions = count($results);
+
+// Tel per label het aantal inzendingen
+$labelCounts = [];
+foreach ($results as $result) {
+    $decodedLabels = json_decode($result->labels, true);
+    if (is_array($decodedLabels)) {
+        foreach ($decodedLabels as $label) {
+            if (isset($labelCounts[$label])) {
+                $labelCounts[$label]++;
+            } else {
+                $labelCounts[$label] = 1;
+            }
+        }
+    } else {
+        if (!empty($result->labels)) {
+            if (isset($labelCounts[$result->labels])) {
+                $labelCounts[$result->labels]++;
+            } else {
+                $labelCounts[$result->labels] = 1;
+            }
+        }
+    }
+}
+
+$chartLabels = array_keys($labelCounts);
+$chartData = array_values($labelCounts);
+
+echo $OUTPUT->header();
+?>
+
+<!-- Inclusie van Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+.dashboard-wrapper {
+    padding: 20px;
+}
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.dashboard-table th, .dashboard-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+.dashboard-table th {
+    background-color: #f5f5f5;
+}
+</style>
+
+<div class="dashboard-wrapper">
+    <h2>Code Quiz Dashboard</h2>
+    <p>Totaal aantal inzendingen: <?php echo $totalSubmissions; ?></p>
+
+    <!-- Pie Chart voor de uitgedeelde labels -->
+    <div style="width: 400px; margin-bottom: 20px;">
+        <canvas id="labelsPieChart" width="400" height="400"></canvas>
+    </div>
+
+    <?php if ($totalSubmissions > 0): ?>
+        <table class="dashboard-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Gebruikersnaam</th>
+                    <th>Label</th>
+                    <th>Tijd van inzending</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($results as $result):
+                    $user = $DB->get_record('user', ['id' => $result->userid]);
+                    $fullname = fullname($user);
+                    $decodedLabel = json_decode($result->labels, true);
+                    if (is_array($decodedLabel)) {
+                        $labelText = implode(", ", $decodedLabel);
+                    } else {
+                        $labelText = $result->labels;
+                    }
+                ?>
+                    <tr>
+                        <td><?php echo $result->id; ?></td>
+                        <td><?php echo $fullname; ?></td>
+                        <td><?php echo $labelText; ?></td>
+                        <td><?php echo date('Y-m-d H:i:s', $result->timecreated); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <p>Geen inzendingen gevonden.</p>
+    <?php endif; ?>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Dashboard geladen');
+
+    // Pie chart initialisatie
+    var ctx = document.getElementById('labelsPieChart').getContext('2d');
+    var chartLabels = <?php echo json_encode($chartLabels); ?>;
+    var chartData = <?php echo json_encode($chartData); ?>;
+    var pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                data: chartData,
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                title: {
+                    display: true,
+                    text: 'Verdeelde labels'
+                }
+            }
+        }
+    });
+});
+</script>
+
+<?php
+echo $OUTPUT->footer();
+
+
+
+==== codequiz/mod_form.php ====
+<?php
+defined('MOODLE_INTERNAL') || die();
+require_once($CFG->dirroot . '/course/moodleform_mod.php');
+require_once($CFG->libdir . '/filelib.php');
+
+class mod_codequiz_mod_form extends moodleform_mod {
+
+    public function definition() {
+        $mform = $this->_form;
+
+        // Activiteitsnaam
+        $mform->addElement('text', 'name', get_string('name'), ['size' => '64']);
+        $mform->setType('name', PARAM_TEXT);
+        $mform->addRule('name', null, 'required', null, 'client');
+
+        // Introductie
+        $this->standard_intro_elements();
+
+        // Herhaalbare vragen
+        $repeatarray = [];
+
+        $repeatarray[] = $mform->createElement('text', 'vraagtext', 'Vraagtekst');
+        $repeatarray[] = $mform->createElement('filemanager', 'mediaupload', 'Afbeelding (upload)', null, [
+            'subdirs' => 0,
+            'maxbytes' => 10485760,
+            'maxfiles' => 1,
+            'accepted_types' => ['image'],
+            'return_types' => FILE_INTERNAL
+        ]);
+        $repeatarray[] = $mform->createElement('editor', 'mediahtml', 'Media (HTML, optioneel)');
+        $repeatarray[] = $mform->createElement('selectyesno', 'crop', 'Media croppen?');
+        $repeatarray[] = $mform->createElement('textarea', 'optiesjson', 'Opties (JSON)');
+
+        $repeateloptions = [
+            'vraagtext' => ['type' => PARAM_TEXT],
+            'mediahtml' => ['type' => PARAM_RAW],
+            'crop' => ['type' => PARAM_INT],
+            'optiesjson' => ['type' => PARAM_RAW],
+        ];
+
+        $this->repeat_elements(
+            $repeatarray,
+            1,
+            $repeateloptions,
+            'vragen_repeats',
+            'vragen_add_fields',
+            1,
+            get_string('addquestion', 'codequiz'),
+            true
+        );
+
+        $this->standard_coursemodule_elements();
+        $this->add_completion_rules();
+        $this->add_action_buttons();
+    }
+
+    public function add_completion_rules() {
+        $mform = $this->_form;
+
+        $mform->addElement('checkbox', 'completionpass',
+            get_string('completionpass_label', 'codequiz'),
+            get_string('completionpass', 'codequiz')
+        );
+        $mform->addHelpButton('completionpass', 'completionpass', 'codequiz');
+
+        return ['completionpass'];
+    }
+
+    public function completion_rule_enabled($data) {
+        return !empty($data['completionpass']);
+    }
+
+    public function get_completion_rule_descriptions() {
+        return [
+            'completionpass' => get_string('completionpass', 'codequiz')
+        ];
+    }
+
+    public function get_data() {
+        $data = parent::get_data();
+        if ($data) {
+            $data->completionpass = !empty($data->completionpass) ? 1 : 0;
+        }
+        return $data;
+    }
+
+    public function data_preprocessing(&$defaultvalues) {
+    global $DB;
+
+    if ($this->is_add_repeat_elements()) {
+        error_log('DEBUG: Nieuw herhaalveld toegevoegd — data_preprocessing() overslaan');
+        return;
+    }
+
+    parent::data_preprocessing($defaultvalues);
+    $defaultvalues['completionpass'] = $this->get_current_completionpass();
+
+    if (empty($this->current) || empty($this->current->id)) {
+        error_log("DEBUG: Geen bestaande instance ID — stoppen");
+        return;
+    }
+
+    $context = $this->context;
+    $questions = $DB->get_records('codequiz_questions', ['codequizid' => $this->current->id], 'sortorder ASC');
+
+    $vraagtext = [];
+    $mediahtml = [];
+    $mediaupload = [];
+    $crop = [];
+    $optiesjson = [];
+
+    $i = 0;
+    foreach ($questions as $question) {
+        $vraagtext[$i] = $question->vraag ?? '';
+
+        $mediahtml[$i] = [
+            'text' => $question->mediahtml ?? '',
+            'format' => FORMAT_HTML
+        ];
+
+        $crop[$i] = isset($question->crop) ? (int)$question->crop : 1;
+
+        $optiesjson[$i] = isset($question->opties) && is_string($question->opties)
+            ? $question->opties
+            : json_encode([], JSON_PRETTY_PRINT);
+
+        $draftid = file_get_submitted_draft_itemid("mediaupload[{$i}]");
+        file_prepare_draft_area(
+            $draftid,
+            $context->id,
+            'mod_codequiz',
+            'mediaupload',
+            $this->current->id * 100 + $i,
+            [
+                'subdirs' => 0,
+                'maxbytes' => 10485760,
+                'maxfiles' => 1,
+                'accepted_types' => ['image'],
+                'return_types' => FILE_INTERNAL
+            ]
+        );
+        $mediaupload[$i] = $draftid;
+
+        $i++;
+    }
+
+    // 📌 Zet aantal herhalingen vóór je de velden vult
+    $defaultvalues['vragen_repeats'] = $i;
+
+    $defaultvalues['vraagtext'] = $vraagtext;
+    $defaultvalues['mediahtml'] = $mediahtml;
+    $defaultvalues['crop'] = $crop;
+    $defaultvalues['optiesjson'] = $optiesjson;
+    $defaultvalues['mediaupload'] = $mediaupload;
+
+}
+
+
+    /**
+     * Detecteert of de gebruiker op "voeg extra vraag toe" heeft geklikt.
+     */
+    private function is_add_repeat_elements(): bool {
+        return optional_param('vragen_add_fields', 0, PARAM_INT) > 0;
+    }
+
+    private function get_current_completionpass() {
+        global $DB;
+
+        if ($this->current && $this->current->id) {
+            return $DB->get_field('codequiz', 'completionpass', ['id' => $this->current->id]);
+        }
+        return 0;
+    }
+}
+
+
+
+==== codequiz/version.php ====
+<?php
+defined('MOODLE_INTERNAL') || die();
+
+$plugin->component = 'mod_codequiz';
+$plugin->version   = 2024032478;
+$plugin->requires  = 2022112800; // minimaal Moodle 4.x
+$plugin->maturity  = MATURITY_STABLE;
+$plugin->release   = 'v1.0';
+
+
+
+==== codequiz/delete_result.php ====
+<?php
+require_once('../../config.php');
+require_login();
+
+global $DB, $USER, $CFG;
+
+$courseid = required_param('courseid', PARAM_INT);
+$instanceid = required_param('instanceid', PARAM_INT);
+
+// Verwijder resultaten
+$DB->delete_records('codequiz_results', [
+    'codequizid' => $instanceid,
+    'userid' => $USER->id,
+    'courseid' => $courseid
+]);
+
+// Directe completion reset
+require_once($CFG->libdir.'/completionlib.php');
+
+if ($cm = get_coursemodule_from_instance('codequiz', $instanceid, $courseid)) {
+    $completion = new completion_info(get_course($courseid));
+
+    // Forceer reset van de status
+    $completion->delete_all_state($cm, $USER->id);
+
+    // Alternative: Directe database update
+    $DB->delete_records('course_modules_completion', [
+        'coursemoduleid' => $cm->id,
+        'userid' => $USER->id
+    ]);
+}
+
+// Cache leegmaken
+purge_all_caches();
+
+echo json_encode(['status' => 'success']);
 
 
 ==== codequiz/db/access.php ====
@@ -576,6 +1257,16 @@ $capabilities = [
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => [
             'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ]
+    ],
+
+    'mod/codequiz:managedashboard' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => [
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
@@ -659,5 +1350,6 @@ $string['completionpass_help'] = 'De activiteit wordt als voltooid beschouwd zod
 $string['completionpass_label'] = 'Quiz voltooid na resultaat';
 $string['welkomstbericht'] = 'Bericht aan gebruiker';
 $string['name'] = 'Activiteitsnaam';
-
+$string['dashboard'] = 'Dashboard';
+$string['addquestion'] = 'Voeg nog een vraag toe';
 

@@ -1,11 +1,3 @@
-<?php
-// Hieronder volgt een aangepaste versie van de Moodle plugin "codequiz"
-// met configureerbare vragen via een eigen tabel, inclusief media (images/video),
-// met behoud van bestaande functionaliteiten zoals completion, zonder gebruik te maken van grades.
-
-// BELANGRIJK: je moet ook het bestand `install.xml` aanpassen om de nieuwe tabel toe te voegen.
-
-// ===== ./codequiz/db/install.xml =====
 <?xml version="1.0" encoding="UTF-8" ?>
 <XMLDB PATH="mod/codequiz/db" VERSION="20250328" COMMENT="XMLDB schema for codequiz module">
     <TABLES>
@@ -48,6 +40,7 @@
                 <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true"/>
                 <FIELD NAME="labels" TYPE="text" NOTNULL="true"/>
                 <FIELD NAME="message" TYPE="text" NOTNULL="true"/>
+                <FIELD NAME="answers" TYPE="text" NOTNULL="false"/> <!-- Nieuw veld -->
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
             </FIELDS>
             <KEYS>

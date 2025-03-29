@@ -59,14 +59,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const outgoing = screens[currentScreen];
     const incoming = screens[index];
 
-    // Zet beginpositie voor inkomend scherm
     incoming.style.transition = "none";
     incoming.style.transform = direction === 'next' ? "translateX(100%)" : "translateX(-100%)";
     incoming.style.opacity = "0";
     incoming.style.display = "block";
 
     requestAnimationFrame(() => {
-      // Start animatie
       incoming.style.transition = "transform 0.4s ease, opacity 0.4s ease";
       outgoing.style.transition = "transform 0.4s ease, opacity 0.4s ease";
 
@@ -137,7 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
       message = "Je bent een aspiring developer. Begin met de basistaken.";
     }
 
-    const resultData = { labels, message };
+    const resultData = { labels, message, answers };
 
     saveResultToDB(resultData).then(() => {
       renderFinalScreen(labels, message);
@@ -203,7 +201,8 @@ document.addEventListener("DOMContentLoaded", function () {
         courseid: config.courseid,
         instanceid: config.instanceid,
         labels: JSON.stringify(resultData.labels),
-        message: resultData.message
+        message: resultData.message,
+        answers: JSON.stringify(resultData.answers) // Nieuw toegevoegd
       })
     })
       .then(res => res.json())

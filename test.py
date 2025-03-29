@@ -17,6 +17,6 @@ def verzamel_bestanden(pad, extensies, uitvoer_bestand):
 if __name__ == "__main__":
     pad = input("Geef het pad naar de directory: ").strip()
     uitvoer_bestand = "samengevoegd_output.txt"
-    verzamel_bestanden(pad, ['.xml', '.php'], uitvoer_bestand)
+    verzamel_bestanden(pad, ['.xml', '.php', '.css', '.js'], uitvoer_bestand)
     print(f"Inhoud opgeslagen in: {uitvoer_bestand}")
 
