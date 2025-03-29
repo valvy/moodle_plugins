@@ -15,13 +15,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const navButtons = document.querySelector(".nav-buttons");
   const prevBtn = document.getElementById("prevBtn");
   const nextBtn = document.getElementById("nextBtn");
+  const screens = [];
+  let currentScreen = 0;
+  const answers = [];
+
   if (config.storedResult) {
     renderFinalScreen(config.storedResult.labels, config.storedResult.message);
     return;
   }
-  const screens = [];
-  let currentScreen = 0;
-  const answers = [];
 
   schermen.forEach((scherm, index) => {
     const screen = document.createElement("div");
@@ -135,7 +136,8 @@ document.addEventListener("DOMContentLoaded", function () {
       level = "aspiring";
     }
 
-    message = config.messages[level].replace(/{{naam}}/g, config.userFirstName);
+    const capitalizedNaam = config.userFirstName.charAt(0).toUpperCase() + config.userFirstName.slice(1);
+    message = config.messages[level].replace(/{{naam}}/g, capitalizedNaam);
     const resultData = { labels: [level + " developer"], message, answers };
 
     saveResultToDB(resultData).then(() => {
@@ -147,11 +149,13 @@ document.addEventListener("DOMContentLoaded", function () {
     navButtons.remove();
 
     container.innerHTML = `
+      <canvas id="matrix"></canvas>
       <div class="final-content">
         <h2>Aanbeveling</h2>
         <p id="final-message">${message}</p>
         <button id="resetBtn">Opnieuw maken</button>
       </div>`;
+    startMatrix();
 
     document.getElementById("resetBtn").addEventListener("click", () => {
       fetch("delete_result.php", {
@@ -174,8 +178,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.error("Fout bij resetten:", err);
       });
     });
-}
-
+  }
 
   function saveResultToDB(resultData) {
     return fetch('submit_result.php', {
@@ -189,6 +192,34 @@ document.addEventListener("DOMContentLoaded", function () {
         answers: JSON.stringify(resultData.answers)
       })
     }).then(res => res.json());
+  }
+
+  function startMatrix() {
+    const canvas = document.getElementById("matrix");
+    const ctx = canvas.getContext("2d");
+    canvas.width = container.offsetWidth;
+    canvas.height = container.offsetHeight;
+    const words = ["print", "python", "for", "if", "class", "input", "import", "return"];
+    const fontSize = 16;
+    const columnWidth = 45;
+    const columns = Math.floor(canvas.width / columnWidth);
+    const drops = Array.from({ length: columns }, () => Math.floor(Math.random() * canvas.height / fontSize));
+
+    function draw() {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#0F0";
+      ctx.font = fontSize + "px monospace";
+      for (let i = 0; i < drops.length; i++) {
+        const text = words[Math.floor(Math.random() * words.length)];
+        ctx.fillText(text, i * columnWidth, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    setInterval(draw, 66);
   }
 
   updateNavButtons();
