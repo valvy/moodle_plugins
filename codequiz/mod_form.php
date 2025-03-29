@@ -153,10 +153,6 @@ class mod_codequiz_mod_form extends moodleform_mod {
     $defaultvalues['optiesjson'] = $optiesjson;
     $defaultvalues['mediaupload'] = $mediaupload;
 
-    // 🐞 Debug
-    error_log("DEBUG: data_preprocessing — vragen_repeats = $i");
-    error_log("DEBUG: vraag 1 = " . ($vraagtext[0] ?? 'niet gezet'));
-    error_log("DEBUG: vraag 2 = " . ($vraagtext[1] ?? 'niet gezet'));
 }
 
 

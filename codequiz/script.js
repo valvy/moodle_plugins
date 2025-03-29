@@ -1,5 +1,3 @@
-// ===== ./codequiz/script.js =====
-
 class Scherm {
   constructor(vraag, mediaHTML, opties, crop = true) {
     this.vraag = vraag;
@@ -25,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
   schermen.forEach((scherm, index) => {
     const screen = document.createElement("div");
     screen.classList.add("screen");
-    screen.style.display = index === 0 ? "block" : "none";
+    if (index === 0) screen.classList.add("active");
 
     const wrapper = document.createElement("div");
     wrapper.classList.add("content-wrapper");
@@ -57,6 +55,38 @@ document.addEventListener("DOMContentLoaded", function () {
     screens.push(screen);
   });
 
+  function showScreen(index, direction = 'next') {
+    const outgoing = screens[currentScreen];
+    const incoming = screens[index];
+
+    // Zet beginpositie voor inkomend scherm
+    incoming.style.transition = "none";
+    incoming.style.transform = direction === 'next' ? "translateX(100%)" : "translateX(-100%)";
+    incoming.style.opacity = "0";
+    incoming.style.display = "block";
+
+    requestAnimationFrame(() => {
+      // Start animatie
+      incoming.style.transition = "transform 0.4s ease, opacity 0.4s ease";
+      outgoing.style.transition = "transform 0.4s ease, opacity 0.4s ease";
+
+      incoming.classList.add("active");
+      incoming.style.transform = "translateX(0)";
+      incoming.style.opacity = "1";
+
+      outgoing.style.transform = direction === 'next' ? "translateX(-100%)" : "translateX(100%)";
+      outgoing.style.opacity = "0";
+
+      setTimeout(() => {
+        outgoing.classList.remove("active");
+        outgoing.style.display = "none";
+        outgoing.style.transform = "translateX(100%)";
+      }, 400);
+    });
+
+    currentScreen = index;
+  }
+
   function updateNavButtons() {
     prevBtn.style.display = currentScreen === 0 ? "none" : "inline-block";
     nextBtn.disabled = !document.querySelector(`input[name="vraag${currentScreen}"]:checked`);
@@ -72,9 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
     answers[currentScreen] = parseInt(selected.value);
 
     if (currentScreen < screens.length - 1) {
-      screens[currentScreen].style.display = "none";
-      currentScreen++;
-      screens[currentScreen].style.display = "block";
+      showScreen(currentScreen + 1, 'next');
       updateNavButtons();
     } else {
       finishQuiz();
@@ -83,9 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   prevBtn.addEventListener("click", () => {
     if (currentScreen > 0) {
-      screens[currentScreen].style.display = "none";
-      currentScreen--;
-      screens[currentScreen].style.display = "block";
+      showScreen(currentScreen - 1, 'prev');
       updateNavButtons();
     }
   });
@@ -218,12 +244,12 @@ document.addEventListener("DOMContentLoaded", function () {
         drops[i]++;
       }
     }
+
     setInterval(draw, 66);
   }
 
   updateNavButtons();
 
-  // ✅ Toon eindscherm als er eerder een resultaat was
   if (config.storedResult) {
     renderFinalScreen(config.storedResult.labels, config.storedResult.message);
   }
