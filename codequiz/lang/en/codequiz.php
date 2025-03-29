@@ -11,3 +11,4 @@ $string['completionpass_label'] = 'Quiz voltooid na resultaat';
 $string['welkomstbericht'] = 'Bericht aan gebruiker';
 $string['name'] = 'Activiteitsnaam';
 $string['dashboard'] = 'Dashboard';
+$string['addquestion'] = 'Voeg nog een vraag toe';
