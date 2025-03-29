@@ -1,5 +1,4 @@
 <?php
-// ===== ./codequiz/view.php =====
 
 require_once('../../config.php');
 require_once($CFG->dirroot.'/mod/codequiz/lib.php');
@@ -36,9 +35,15 @@ foreach ($questions as $q) {
     ];
 }
 
+// Voeg thresholds toe aan config
+$labelthresholds = [
+    'aspiring' => $instance->threshold_aspiring,
+    'skilled' => $instance->threshold_skilled,
+    'expert' => $instance->threshold_expert
+];
+
 echo $OUTPUT->header();
 
-// Voeg een dashboard navigatielink toe voor gebruikers met de juiste capability
 $context = context_module::instance($cm->id);
 if (has_capability('mod/codequiz:managedashboard', $context)) {
     $dashboardurl = new moodle_url('/mod/codequiz/dashboard.php', ['courseid' => $course->id, 'instanceid' => $cm->instance]);
@@ -51,7 +56,8 @@ if (has_capability('mod/codequiz:managedashboard', $context)) {
     courseid: <?php echo $course->id; ?>,
     instanceid: <?php echo $cm->instance; ?>,
     storedResult: <?php echo json_encode($stored_result_data); ?>,
-    vraagSchermen: <?php echo json_encode($vraagSchermen); ?>
+    vraagSchermen: <?php echo json_encode($vraagSchermen); ?>,
+    labelThresholds: <?php echo json_encode($labelthresholds); ?>
   };
 </script>
 

@@ -9,8 +9,12 @@
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false" COMMENT="Introduction description"/>
                 <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" COMMENT="Intro format"/>
                 <FIELD NAME="completionpass" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Completion rule: mark complete after result"/>
+                <FIELD NAME="threshold_aspiring" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
+                <FIELD NAME="threshold_skilled" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="3"/>
+                <FIELD NAME="threshold_expert" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="6"/>
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp modified"/>
+
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primary key id"/>

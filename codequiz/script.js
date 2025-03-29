@@ -115,32 +115,34 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   function finishQuiz() {
-    if (answers.length < schermen.length || answers.includes(undefined)) {
-      console.error("Niet alle vragen zijn beantwoord.");
-      return;
-    }
-
-    const total = answers.reduce((a, b) => a + b, 0);
-    const labels = [];
-    let message = "";
-
-    if (total > 5) {
-      labels.push("expert developer");
-      message = "Je bent een expert developer. Ga aan de slag met de moeilijkste opdrachten.";
-    } else if (total >= 3) {
-      labels.push("skilled developer");
-      message = "Je bent een skilled developer. Kies gemiddeld moeilijke opdrachten.";
-    } else {
-      labels.push("aspiring developer");
-      message = "Je bent een aspiring developer. Begin met de basistaken.";
-    }
-
-    const resultData = { labels, message, answers };
-
-    saveResultToDB(resultData).then(() => {
-      renderFinalScreen(labels, message);
-    });
+  if (answers.length < schermen.length || answers.includes(undefined)) {
+    console.error("Niet alle vragen zijn beantwoord.");
+    return;
   }
+
+  const total = answers.reduce((a, b) => a + b, 0);
+  const labels = [];
+  let message = "";
+
+  const thresholds = window.codequizConfig.labelThresholds;
+
+  if (total >= thresholds.expert) {
+    labels.push("expert developer");
+    message = "Je bent een expert developer. Ga aan de slag met de moeilijkste opdrachten.";
+  } else if (total >= thresholds.skilled) {
+    labels.push("skilled developer");
+    message = "Je bent een skilled developer. Kies gemiddeld moeilijke opdrachten.";
+  } else if (total >= thresholds.aspiring) {
+    labels.push("aspiring developer");
+    message = "Je bent een aspiring developer. Begin met de basistaken.";
+  }
+
+  const resultData = { labels, message };
+
+  saveResultToDB(resultData).then(() => {
+    renderFinalScreen(labels, message);
+  });
+}
 
   function renderFinalScreen(labels, message) {
     navButtons.remove();

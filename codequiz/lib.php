@@ -27,14 +27,16 @@ function codequiz_add_instance(stdClass $data, mod_codequiz_mod_form $mform = nu
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
     $data->coursemodule = $data->coursemodule ?? 0;
 
+    // Opslaan thresholds
+    $data->threshold_aspiring = isset($data->threshold_aspiring) ? (int)$data->threshold_aspiring : 0;
+    $data->threshold_skilled = isset($data->threshold_skilled) ? (int)$data->threshold_skilled : 3;
+    $data->threshold_expert = isset($data->threshold_expert) ? (int)$data->threshold_expert : 6;
+
     $id = $DB->insert_record('codequiz', $data);
     codequiz_save_questions($id, $data);
     return $id;
 }
 
-/**
- * Update bestaande instantie.
- */
 function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform = null) {
     global $DB;
 
@@ -43,11 +45,15 @@ function codequiz_update_instance(stdClass $data, mod_codequiz_mod_form $mform =
     $data->completionpass = !empty($data->completionpass) ? 1 : 0;
     $data->coursemodule = $data->coursemodule ?? 0;
 
+    // Update thresholds
+    $data->threshold_aspiring = isset($data->threshold_aspiring) ? (int)$data->threshold_aspiring : 0;
+    $data->threshold_skilled = isset($data->threshold_skilled) ? (int)$data->threshold_skilled : 3;
+    $data->threshold_expert = isset($data->threshold_expert) ? (int)$data->threshold_expert : 6;
+
     $DB->update_record('codequiz', $data);
     codequiz_save_questions($data->id, $data);
     return true;
 }
-
 /**
  * Verwijder een codequiz-instantie.
  */
