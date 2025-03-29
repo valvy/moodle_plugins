@@ -2,7 +2,7 @@
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot.'/course/moodleform_mod.php');
 
-class mod_learninggoals_mod_form extends moodleform_mod {
+class mod_dashboard_mod_form extends moodleform_mod {
     function definition() {
         $mform = $this->_form;
 
@@ -15,6 +15,11 @@ class mod_learninggoals_mod_form extends moodleform_mod {
         $mform->addElement('textarea', 'welkomstbericht', 'Bericht aan gebruiker', 'wrap="virtual" rows="5" cols="50"');
         $mform->setType('welkomstbericht', PARAM_RAW);
         $mform->addRule('welkomstbericht', 'Geef een bericht op', 'required');
+
+        // Nieuw veld: verwijzing naar de gekoppelde codequiz-activiteit
+        $mform->addElement('text', 'codequizid', 'CodeQuiz ID');
+        $mform->setType('codequizid', PARAM_INT);
+        $mform->addRule('codequizid', 'Geef de CodeQuiz ID op', 'required');
 
         $this->standard_coursemodule_elements();
         $this->add_action_buttons();

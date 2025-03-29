@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/learninggoals/db" VERSION="20240322" COMMENT="XMLDB schema for learninggoals module">
+<XMLDB PATH="mod/dashboard/db" VERSION="20250329" COMMENT="XMLDB schema for dashboard module">
     <TABLES>
-        <TABLE NAME="learninggoals" COMMENT="learning_goals module data">
+        <TABLE NAME="dashboard" COMMENT="dashboard module data">
             <FIELDS>
                 <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" COMMENT="Primary key"/>
                 <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Course ID"/>
                 <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" COMMENT="Name of the activity"/>
+
                 <FIELD NAME="intro" TYPE="text" NOTNULL="false" COMMENT="Introduction description"/>
+                <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" COMMENT="Format of the intro field"/>
+
                 <FIELD NAME="welkomstbericht" TYPE="text" NOTNULL="true" COMMENT="Welcome message for user"/>
                 <FIELD NAME="outputexample" TYPE="text" NOTNULL="false" COMMENT="Example output for user"/>
+
+                <FIELD NAME="codequizid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Linked CodeQuiz assignment ID"/>
+
                 <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp creation"/>
                 <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp modified"/>
             </FIELDS>
