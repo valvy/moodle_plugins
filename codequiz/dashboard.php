@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
     WordCloud(document.getElementById('wordcloud'), {
         list: wordList,
         gridSize: Math.round(16 * document.getElementById('wordcloud').offsetWidth / 1024),
-        weightFactor: function (size) { return size * 3; },
+        weightFactor: function (size) { return size * 40; },
         fontFamily: 'monospace',
         color: 'random-dark',
         backgroundColor: '#fff',

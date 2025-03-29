@@ -7,6 +7,7 @@ require_once($CFG->libdir . '/filelib.php');
 class mod_codequiz_mod_form extends moodleform_mod {
 
     public function definition() {
+        global $DB;
         $mform = $this->_form;
 
         // Activiteitsnaam
@@ -28,6 +29,13 @@ class mod_codequiz_mod_form extends moodleform_mod {
 
         $mform->addElement('text', 'threshold_expert', 'Expert developer vanaf punten:', ['size' => 5]);
         $mform->setType('threshold_expert', PARAM_INT);
+
+        // Bepaal aantal vragen
+        $vraagcount = 1; // standaardwaarde
+        if ($this->current && !empty($this->current->id)) {
+            $vraagcount = $DB->count_records('codequiz_questions', ['codequizid' => $this->current->id]);
+            $vraagcount = $vraagcount > 0 ? $vraagcount : 1;
+        }
 
         // Herhaalbare vragen
         $repeatarray = [];
@@ -53,7 +61,7 @@ class mod_codequiz_mod_form extends moodleform_mod {
 
         $this->repeat_elements(
             $repeatarray,
-            1,
+            $vraagcount,
             $repeateloptions,
             'vragen_repeats',
             'vragen_add_fields',
@@ -67,6 +75,22 @@ class mod_codequiz_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
+    public function add_completion_rules() {
+        $mform = $this->_form;
+
+        $mform->addElement('checkbox', 'completionpass',
+            get_string('completionpass_label', 'codequiz'),
+            get_string('completionpass', 'codequiz')
+        );
+        $mform->addHelpButton('completionpass', 'completionpass', 'codequiz');
+
+        return ['completionpass'];
+    }
+
+    public function completion_rule_enabled($data) {
+        return !empty($data['completionpass']);
+    }
+
     public function data_preprocessing(&$defaultvalues) {
         global $DB;
 
@@ -76,6 +100,7 @@ class mod_codequiz_mod_form extends moodleform_mod {
             $defaultvalues['threshold_aspiring'] = $instance->threshold_aspiring;
             $defaultvalues['threshold_skilled'] = $instance->threshold_skilled;
             $defaultvalues['threshold_expert'] = $instance->threshold_expert;
+            $defaultvalues['completionpass'] = $instance->completionpass;
 
             $questions = $DB->get_records('codequiz_questions', ['codequizid' => $this->current->id], 'sortorder ASC');
 
