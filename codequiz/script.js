@@ -137,12 +137,14 @@ document.addEventListener("DOMContentLoaded", function () {
     message = "Je bent een aspiring developer. Begin met de basistaken.";
   }
 
-  const resultData = { labels, message };
+  // Stuur nu ook antwoorden mee
+  const resultData = { labels, message, answers };
 
   saveResultToDB(resultData).then(() => {
     renderFinalScreen(labels, message);
   });
 }
+
 
   function renderFinalScreen(labels, message) {
     navButtons.remove();
