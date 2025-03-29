@@ -18,11 +18,11 @@ $PAGE->set_title('Code Quiz Dashboard');
 $PAGE->set_heading($course->fullname);
 $PAGE->set_pagelayout('incourse');
 
-// Haal resultaten op
+// Resultaten ophalen
 $results = $DB->get_records('codequiz_results', ['codequizid' => $instanceid]);
 $totalSubmissions = count($results);
 
-// Haal vragen op
+// Vragen ophalen
 $questions = $DB->get_records('codequiz_questions', ['codequizid' => $instanceid], 'sortorder ASC');
 
 $optionMap = [];
@@ -34,7 +34,7 @@ foreach ($questions as $question) {
     }
 }
 
-// Wordcount + gebruikersmapping
+// Wordcloud data + gebruikersmapping
 $answerTextCounts = [];
 $answerUserMap = [];
 foreach ($results as $result) {
@@ -53,7 +53,7 @@ foreach ($results as $result) {
     }
 }
 
-// Labels
+// Labels tellen
 $labelCounts = [];
 foreach ($results as $result) {
     $decodedLabels = json_decode($result->labels, true);
@@ -70,7 +70,7 @@ $chartData = array_values($labelCounts);
 echo $OUTPUT->header();
 ?>
 
-<!-- JS voor Chart.js + WordCloud -->
+<!-- Chart.js & WordCloud2 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.1.1/wordcloud2.min.js"></script>
 
@@ -95,6 +95,55 @@ echo $OUTPUT->header();
     height: 400px;
     border: 1px solid #ccc;
     margin-top: 30px;
+}
+
+/* Modal styling */
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#modal-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.modal {
+    background: white;
+    color: #333;
+    padding: 30px;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    position: relative;
+    z-index: 1000;
+    display: block;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+.modal h3 {
+    margin-top: 0;
+}
+.modal ul {
+    padding-left: 20px;
+}
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
 }
 </style>
 
@@ -152,6 +201,15 @@ echo $OUTPUT->header();
     <?php endif; ?>
 </div>
 
+<!-- Modal -->
+<div id="modal-overlay">
+  <div class="modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <h3 id="modal-title"></h3>
+    <ul id="modal-content"></ul>
+  </div>
+</div>
+
 <script>
 const answerUserMap = <?php echo json_encode($answerUserMap); ?>;
 
@@ -200,14 +258,38 @@ document.addEventListener('DOMContentLoaded', function() {
         click: function (item) {
             const woord = item[0];
             const gebruikers = answerUserMap[woord] || [];
-            if (gebruikers.length > 0) {
-                alert(`Antwoord: "${woord}"\n\nGegeven door:\n- ${gebruikers.join("\n- ")}`);
-            } else {
-                alert(`Geen gebruikers gevonden voor "${woord}".`);
-            }
+            openModal(woord, gebruikers);
         }
     });
 });
+
+function openModal(title, users) {
+    const overlay = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+
+    modalTitle.textContent = `Antwoord: "${title}"`;
+    modalContent.innerHTML = '';
+
+    if (users.length > 0) {
+        users.forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = name;
+            modalContent.appendChild(li);
+        });
+    } else {
+        const li = document.createElement('li');
+        li.textContent = 'Geen gebruikers gevonden.';
+        modalContent.appendChild(li);
+    }
+
+    overlay.classList.add('show');
+}
+
+function closeModal() {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.classList.remove('show');
+}
 </script>
 
 <?php
